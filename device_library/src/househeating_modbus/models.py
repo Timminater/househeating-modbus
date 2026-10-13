@@ -47,7 +47,7 @@ class DeviceConfig:
             raise ValueError("max_read must be between 1 and 100")
         for name, lo, hi in (("spacing", .1, 5), ("timeout", 1, 30),
                              ("slow_interval", 10, 3600), ("max_heating", 20, 60),
-                             ("max_floor", 20, 60), ("max_dhw", 20, 65),
+                             ("max_floor", 20, 60), ("max_dhw", 20, 75),
                              ("verify_delay", 0, 5)):
             value = getattr(self, name)
             if not isfinite(value) or not lo <= value <= hi:

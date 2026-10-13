@@ -39,6 +39,16 @@
       "refresh": {
         "default": "mdi:refresh"
       }
+    },
+    "climate": {
+      "climate_main": {
+        "default": "mdi:heat-pump"
+      }
+    },
+    "water_heater": {
+      "dhw_water_heater": {
+        "default": "mdi:water-boiler"
+      }
     }
   }
 }

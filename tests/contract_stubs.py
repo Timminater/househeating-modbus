@@ -135,7 +135,7 @@ def install(monkeypatch):
     module('homeassistant.config_entries', ConfigEntry=Entry, ConfigFlow=Flow,
            OptionsFlowWithReload=Flow)
     module('homeassistant.exceptions', HomeAssistantError=HAError)
-    platform=StrEnum('Platform', {n:n.lower() for n in ('SENSOR','BINARY_SENSOR','NUMBER','SELECT','SWITCH','BUTTON')})
+    platform=StrEnum('Platform', {n:n.lower() for n in ('SENSOR','BINARY_SENSOR','NUMBER','SELECT','SWITCH','BUTTON','CLIMATE','WATER_HEATER')})
     module('homeassistant.const', Platform=platform,
            UnitOfTemperature=StrEnum('UnitOfTemperature', {'CELSIUS':'°C'}))
     module('homeassistant.helpers.config_validation', config_entry_only_config_schema=lambda d: {})
@@ -147,7 +147,7 @@ def install(monkeypatch):
                      ('switch','SwitchEntity'),('binary_sensor','BinarySensorEntity'),('button','ButtonEntity')):
         extra={}
         if name=='sensor':
-            extra={'SensorDeviceClass':StrEnum('SensorDeviceClass',{x.upper():x for x in ('temperature','frequency','voltage','current','power','energy','enum')}),
+            extra={'SensorDeviceClass':StrEnum('SensorDeviceClass',{x.upper():x for x in ('temperature','frequency','voltage','current','power','energy','enum','volume_flow_rate')}),
                    'SensorStateClass':StrEnum('SensorStateClass',{'MEASUREMENT':'measurement'})}
         if name=='number':
             extra={'NumberDeviceClass':StrEnum('NumberDeviceClass',{'TEMPERATURE':'temperature'}),
@@ -165,9 +165,8 @@ def install(monkeypatch):
         hass.temporary_calls.append((params,unit_id))
         yield hass.unit
     module('homeassistant.components.modbus', async_get_unit=unit, async_get_temporary_unit=temporary)
-    module('probatio', Schema=lambda x:x, Required=lambda key,**kw:key,
-           Optional=lambda key,**kw:key, All=lambda *args:args, Coerce=lambda x:x,
-           Range=lambda **kw:kw)
-    module('homeassistant.helpers.selector', SelectSelector=lambda x:x,
+    # Use the real HA 2026.10 schema dependency, never a schema-library testdouble.
+    import probatio
+    module('homeassistant.helpers.selector', SelectSelector=lambda x:probatio.In(x['options']),
            SelectSelectorConfig=lambda **kw:kw,
            SelectSelectorMode=SimpleNamespace(DROPDOWN='dropdown'))

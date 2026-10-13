@@ -38,3 +38,10 @@ De officiële voorbeelden zijn gebruikt als API-/architectuurreferentie, niet al
 SHA256 van de oorspronkelijke ZIP-bestanden; gecontroleerd bij import op 13 oktober 2026.
 - `househeating_modbus_project_v0.1.0.zip`: `23b2a4a0e8d901dc520b560545692c9dd3043db6a7c89615923c1a508ba1c398`
 - `househeating_modbus_v0.1.0.zip`: `5cb45302f8a1d1f18ab985d6e38f96461dba55339473c87cc1685ecf2c3af6c5`
+
+## Hercontrole voor v0.2.0
+
+- De actuele [HGB-productpagina](https://www.hgb-trading.nl/househeating-warmtepomp-monoblock-12-kw-162229888.html) noemt voor HH-C3-12 een watertemperatuur tot 75 °C. Dit ondersteunt samen met 0x0302 (20–75 °C, PDF p184) het instelbare warmwaterplafond van 75 °C. 0x0301 blijft 20–60 °C volgens diezelfde tabel.
+- Waterdebiet: lopende parameter 25 op PDF p160 noemt 3–100 L/min; de Modbus-tabel p167 koppelt waterstroom als echte waarde aan 0x0058. Stilstandwaarde 0 wordt geaccepteerd.
+- De echte Home Assistant 2026.10.1-package is geïnstalleerd en gebruikt `probatio==0.13.0`. De eerdere bewering dat die import een fout was, is onjuist. De import is behouden en wordt met echte formulieren getest.
+- P48/0x0130 en P116/0x0174 worden alleen gelezen. Onbekende configuratie levert geen verzonnen procesmeting op. De dubbelzinnige P257 is niet gebruikt voor nieuwe schrijfbediening.

@@ -2,7 +2,7 @@
 
 **Deze map is geen installeerbare Core-release en geen gereedstaande pull request.** Installeer voor de praktijktest de custom-integratie.
 
-De adapter is gelijk aan de custom-versie, maar importeert `househeating_modbus` als zelfstandig pakket. Het `version`-veld is uit het manifest verwijderd. De afhankelijkheid `househeating-modbus==0.1.0` is nog niet op PyPI gepubliceerd; daarom is dit alleen een ontwikkelbasis. Er is geen Core-wijziging, PyPI-publicatie of GitHub-pull-request uitgevoerd.
+De adapter is gelijk aan de custom-versie, maar importeert `househeating_modbus` als zelfstandig pakket. Het `version`-veld is uit het manifest verwijderd. De afhankelijkheid `househeating-modbus==0.2.0` is nog niet op PyPI gepubliceerd; daarom is dit alleen een ontwikkelbasis. Er is geen Core-wijziging, PyPI-publicatie of GitHub-pull-request uitgevoerd.
 
 Voor een echte bijdrage zijn onder andere nodig:
 

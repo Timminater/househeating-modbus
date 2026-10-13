@@ -277,7 +277,7 @@ async def test_cancellation_is_propagated():
 
 @pytest.mark.parametrize("kwargs", [{"measurement_divisor": 2}, {"setpoint_divisor": 0},
                                     {"max_read": 101}, {"max_read": 0}, {"spacing": .01},
-                                    {"max_floor": 65}, {"max_dhw": 70}, {"timeout": float("nan")}])
+                                    {"max_floor": 65}, {"max_dhw": 76}, {"timeout": float("nan")}])
 def test_invalid_configuration(kwargs):
     with pytest.raises(ValueError):
         DeviceConfig(**kwargs)

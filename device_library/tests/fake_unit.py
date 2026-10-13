@@ -15,7 +15,8 @@ def memory(divisor=10, measurement_divisor=10, protocol=130):
                  0x58: 123, 0x5C: 257, 0x74: int(31 * measurement_divisor),
                  0x300: 12 * divisor, 0x301: 35 * divisor, 0x302: 55 * divisor,
                  0x303: 35 * divisor, 0x304: 7, 0x305: 1, 0x306: 20 * divisor,
-                 0x307: 0, 0x360: 404, 0x361: 0, 0x362: 1, 0x363: protocol})
+                 0x307: 0, 0x360: 404, 0x361: 0, 0x362: 1, 0x363: protocol,
+                 0x130: 1, 0x174: 1})
     return data
 
 

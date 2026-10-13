@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "househeating-modbus"
-version = "0.1.0"
+version = "0.2.0"
 description = "Backend-neutral HouseHeating / SolarEast heat-pump register protocol"
 readme = "README.md"
 requires-python = ">=3.13"

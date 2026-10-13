@@ -1,8 +1,10 @@
 {
   "domain": "househeating",
   "name": "HouseHeating Modbus",
-  "codeowners": [],
-  "documentation": "https://www.hgb-trading.nl/",
+  "codeowners": [
+    "@Timminater"
+  ],
+  "documentation": "https://github.com/Timminater/househeating-modbus",
   "config_flow": true,
   "dependencies": [
     "modbus"
@@ -10,6 +12,7 @@
   "integration_type": "device",
   "iot_class": "local_polling",
   "requirements": [
-    "househeating-modbus==0.1.0"
-  ]
+    "househeating-modbus==0.2.0"
+  ],
+  "issue_tracker": "https://github.com/Timminater/househeating-modbus/issues"
 }

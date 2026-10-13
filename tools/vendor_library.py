@@ -30,7 +30,8 @@ def main():
     manifest.pop('version')
     # This dependency is deliberately NOT used by the installable custom build.
     # Publication and maintainer review are prerequisites for the Core draft.
-    manifest['requirements'] = ['househeating-modbus==0.1.0']
+    version = json.loads((CUSTOM / 'manifest.json').read_text())['version']
+    manifest['requirements'] = [f'househeating-modbus=={version}']
     (CORE / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     shutil.copy2(ROOT / 'device_library/tests/fake_unit.py', ROOT / 'tests/fake_unit.py')
     print('Own library synchronized; Core draft refreshed.')

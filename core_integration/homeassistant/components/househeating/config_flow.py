@@ -27,6 +27,10 @@ def connection_schema(defaults: dict[str, Any]):
         vol.Optional("port", default=defaults.get("port", 502)): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
         vol.Optional("serial_device", default=defaults.get("serial_device", "")): str,
         vol.Required("unit_id", default=defaults.get("unit_id", 1)): vol.All(vol.Coerce(int), vol.Range(min=1, max=247)),
+        vol.Required("measurement_divisor", default=str(defaults.get("measurement_divisor", 10))): SelectSelector(
+            SelectSelectorConfig(options=["10", "1"], translation_key="temperature_divisor")),
+        vol.Required("setpoint_divisor", default=str(defaults.get("setpoint_divisor", 10))): SelectSelector(
+            SelectSelectorConfig(options=["10", "1"], translation_key="temperature_divisor")),
     })
 
 
@@ -45,7 +49,7 @@ def options_schema(options):
         vol.Required("curves", default=options["curves"]): bool,
         vol.Required("max_heating", default=options["max_heating"]): vol.All(vol.Coerce(int), vol.Range(min=20, max=60)),
         vol.Required("max_floor", default=options["max_floor"]): vol.All(vol.Coerce(int), vol.Range(min=20, max=60)),
-        vol.Required("max_dhw", default=options["max_dhw"]): vol.All(vol.Coerce(int), vol.Range(min=20, max=65)),
+        vol.Required("max_dhw", default=options["max_dhw"]): vol.All(vol.Coerce(int), vol.Range(min=20, max=75)),
         vol.Required("allow_control", default=options["allow_control"]): bool,
     })
 
@@ -74,16 +78,20 @@ class HouseHeatingConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 data = normalize_connection(user_input)
+                options = dict(DEFAULT_OPTIONS)
+                for key in ("measurement_divisor", "setpoint_divisor"):
+                    options[key] = int(user_input.get(key, options[key]))
+                device_config(options)
                 await self.async_set_unique_id(data["connection_key"])
                 self._abort_if_unique_id_configured()
-                await probe(self.hass, data, DEFAULT_OPTIONS)
+                await probe(self.hass, data, options)
             except ValueError:
                 errors["base"] = "invalid_connection"
             except (HeatPumpError, HomeAssistantError):
                 errors["base"] = "cannot_connect"
             else:
                 return self.async_create_entry(title=data["name"], data=data,
-                                               options=dict(DEFAULT_OPTIONS))
+                                               options=options)
         return self.async_show_form(step_id="user", data_schema=connection_schema(user_input or {}), errors=errors)
 
     async def async_step_reconfigure(self, user_input=None):
@@ -102,6 +110,8 @@ class HouseHeatingConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
             else:
                 options = dict(entry.options) | {"allow_control": False, "authorized_identity": []}
+                for key in ("measurement_divisor", "setpoint_divisor"):
+                    options[key] = int(user_input.get(key, options.get(key, 10)))
                 # Entity and device identities use entry_id, so an address change
                 # retains their history. No separate update listener is registered.
                 self.hass.config_entries.async_update_entry(entry, data=data, options=options,
@@ -109,7 +119,7 @@ class HouseHeatingConfigFlow(ConfigFlow, domain=DOMAIN):
                 await self.hass.config_entries.async_reload(entry.entry_id)
                 return self.async_abort(reason="reconfigure_successful")
         return self.async_show_form(step_id="reconfigure",
-                                    data_schema=connection_schema(user_input or dict(entry.data)), errors=errors)
+                                    data_schema=connection_schema(user_input or (dict(entry.data) | dict(entry.options))), errors=errors)
 
 
 class HouseHeatingOptionsFlow(OptionsFlowWithReload):

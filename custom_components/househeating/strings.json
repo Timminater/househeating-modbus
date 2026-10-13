@@ -4,14 +4,16 @@
     "step": {
       "user": {
         "title": "HouseHeating Modbus",
-        "description": "Experimental HH-C3-12 integration. Starts without writing. For TCP enter host/port; for USB/RS485 enter the serial device. Configure the heat-pump gateway/UART for 9600 baud, 8N1 and RTU. Do not add an independent second master on the same bus.",
+        "description": "Experimental HH-C3-12 integration. Starts without writing. For TCP enter host/port; for USB/RS485 enter the serial device. Configure the heat-pump gateway/UART for 9600 baud, 8N1 and RTU. Do not add an independent second master on the same bus. Select temperature divisors against the physical controller: raw 350 for 35 °C = divisor 10; raw 35 for 35 °C = divisor 1. Measurements and setpoints may differ. Control stays locked until readings are confirmed in the options.",
         "data": {
           "name": "Device name",
           "transport": "Connection type",
           "host": "Gateway IP address or hostname",
           "port": "TCP port",
           "serial_device": "USB/RS485 serial device",
-          "unit_id": "Modbus unit ID"
+          "unit_id": "Modbus unit ID",
+          "measurement_divisor": "Measured temperature divisor",
+          "setpoint_divisor": "Setpoint temperature divisor"
         }
       },
       "reconfigure": {
@@ -23,7 +25,9 @@
           "host": "Gateway IP address or hostname",
           "port": "TCP port",
           "serial_device": "USB/RS485 serial device",
-          "unit_id": "Modbus unit ID"
+          "unit_id": "Modbus unit ID",
+          "measurement_divisor": "Measured temperature divisor",
+          "setpoint_divisor": "Setpoint temperature divisor"
         }
       }
     },
@@ -42,7 +46,7 @@
     "step": {
       "init": {
         "title": "Polling and control",
-        "description": "Start with control disabled. The manual specifies raw/10 temperatures. Only use raw/1 after checking the physical controller. Measurements and setpoints have separate divisors. Extra entities can be enabled in the entity list.",
+        "description": "Temperature scaling varies with firmware and is inconsistent in the manual. Verify measurements and setpoints separately against the physical controller. Raw 350 for 35 °C: divisor 10; raw 35 for 35 °C: divisor 1. Hot water defaults to a 65 °C cap, configurable up to 75 °C after checking the installation. Heating is limited to 60 °C by register 0x0301.",
         "data": {
           "scan_interval": "Basic polling interval (seconds)",
           "slow_interval": "Extra registers interval (seconds)",
@@ -189,7 +193,7 @@
         "name": "Water pump PWM"
       },
       "flow_raw": {
-        "name": "Water flow (raw)"
+        "name": "Water flow"
       },
       "dhw_return_temperature": {
         "name": "Hot-water circulation return temperature"
@@ -395,6 +399,12 @@
       },
       "protocol_version": {
         "name": "Protocol version"
+      },
+      "dhw_sensor_enabled": {
+        "name": "Hot-water sensor enabled"
+      },
+      "temperature_control_mode": {
+        "name": "Water temperature control mode"
       }
     },
     "number": {
@@ -549,6 +559,26 @@
     "button": {
       "refresh": {
         "name": "Read all values again"
+      }
+    },
+    "climate": {
+      "climate_main": {
+        "name": "Heating and cooling",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "standard": "Standard",
+              "powerful": "Powerful",
+              "silent": "Silent",
+              "floor_heating": "Floor heating"
+            }
+          }
+        }
+      }
+    },
+    "water_heater": {
+      "dhw_water_heater": {
+        "name": "Hot-water tank"
       }
     }
   },

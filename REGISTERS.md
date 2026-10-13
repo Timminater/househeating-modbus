@@ -1,4 +1,4 @@
-# Registercatalogus v0.1.0
+# Registercatalogus v0.2.0
 
 Adressen zijn de hexadecimale, nul-gebaseerde adressen op de Modbus-bus.
 Bron: meegeleverde HouseHeating-handleiding; paginanummers hieronder zijn PDF-pagina’s.
@@ -38,7 +38,7 @@ De kolom schrijven betekent: uitsluitend na expliciete vrijgave en verificatie.
 | `dhw_temperature` | `0x0054` | Boilertemperatuur | °C | Nee | 167 |
 | `plate_temperature` | `0x0055` | Temperatuur platenwarmtewisselaar | °C | Nee | 167 |
 | `pump_pwm` | `0x0057` | Waterpomp-PWM | % | Nee | 167 |
-| `flow_raw` | `0x0058` | Waterdebiet (ruw) | ruw / status | Nee | 167 |
+| `flow_raw` | `0x0058` | Waterdebiet | L/min | Nee | 167 |
 | `dhw_return_temperature` | `0x0059` | Retourtemperatuur warmwatercirculatie | °C | Nee | 167 |
 | `unit_voltage` | `0x005A` | Ingangsspanning eenheid | V | Nee | 167 |
 | `unit_current` | `0x005B` | Ingangsstroom eenheid | A | Nee | 167 |
@@ -85,3 +85,15 @@ Temperaturen: standaard signed 16-bit / 10; setpoints hebben een afzonderlijke d
 Statusvelden blijven unsigned. Ventilator, debiet en enkele overige onduidelijke velden worden bewust ruw weergegeven.
 Extra registergroepen en curven worden langzamer gelezen; ontbrekende optionele groepen maken basiswaarden niet onbeschikbaar.
 Curven worden alleen via 0x0313–0x0316 bediend vanaf protocol 130; de oudere gecombineerde bytevelden worden niet beschreven.
+
+## Aanvullingen v0.2.0
+
+- `flow_raw`/0x0058 behoudt zijn entiteitsleutel maar heeft nu eenheid L/min
+  (PDF p160 en p167). Stilstandwaarde 0 is geldig.
+- `dhw_sensor_enabled`/0x0130: alleen lezen, bevestigt de warmwaterfunctie (P48).
+- `temperature_control_mode`/0x0174: alleen lezen, 0 = waterinlaat,
+  1 = wateruitlaat (P116). Onbekende waarden worden niet geraden.
+- Boiler/vermogen/debiet/relais worden elke basiscyclus gelezen; zones en
+  configuratie blijven langzamer. Optionele leesfouten hergebruiken geen oude meting.
+- Warmwater-schrijfplafond kan van standaard 65 tot maximaal 75 °C worden ingesteld.
+  Register 0x0301 voor verwarming blijft maximaal 60 °C.

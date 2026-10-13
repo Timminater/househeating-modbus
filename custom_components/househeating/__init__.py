@@ -13,7 +13,7 @@ from .const import DEFAULT_OPTIONS, DOMAIN
 from .coordinator import HouseHeatingConfigEntry, HouseHeatingCoordinator
 
 PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.NUMBER,
-             Platform.SELECT, Platform.SWITCH, Platform.BUTTON]
+             Platform.SELECT, Platform.SWITCH, Platform.BUTTON, Platform.CLIMATE, Platform.WATER_HEATER]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 

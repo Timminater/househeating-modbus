@@ -3,6 +3,7 @@ from pathlib import Path
 import argparse
 import hashlib
 import zipfile
+import json
 
 ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED = {'__pycache__', '.pytest_cache', '.git', '.venv', 'dist'}
@@ -18,14 +19,15 @@ def main():
     parser.add_argument('--output', type=Path, default=ROOT / 'dist')
     out = parser.parse_args().output
     out.mkdir(parents=True, exist_ok=True)
-    install = out / 'househeating_modbus_v0.1.0.zip'
-    full = out / 'househeating_modbus_project_v0.1.0.zip'
+    version = json.loads((ROOT / 'custom_components/househeating/manifest.json').read_text())['version']
+    install = out / f'househeating_modbus_v{version}.zip'
+    full = out / f'househeating_modbus_project_v{version}.zip'
     with zipfile.ZipFile(install, 'w', zipfile.ZIP_DEFLATED) as archive:
         base = ROOT
         for path in sorted((base / 'custom_components').rglob('*')):
             if include(path):
                 archive.write(path, path.relative_to(base))
-        for name in ('INSTALLATIE.md', 'REGISTERS.md', 'SOURCES.md', 'TEST_REPORT.md', 'LICENSE'):
+        for name in ('README.md', 'assets/logo.png', 'INSTALLATIE.md', 'REGISTERS.md', 'SOURCES.md', 'TEST_REPORT.md', 'LICENSE'):
             archive.write(ROOT / name, name)
     with zipfile.ZipFile(full, 'w', zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(ROOT.rglob('*')):

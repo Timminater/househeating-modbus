@@ -4,14 +4,16 @@
     "step": {
       "user": {
         "title": "HouseHeating Modbus",
-        "description": "Experimentele integratie voor HH-C3-12. Begint zonder schrijfcommando’s. Voor TCP vul je host en poort in; voor USB/RS485 alleen het seriële apparaat. De gateway/UART aan de warmtepomp moet 9600 baud, 8N1 en RTU gebruiken. Gebruik geen tweede onafhankelijke Modbus-master op dezelfde bus.",
+        "description": "Experimentele integratie voor HH-C3-12. Begint zonder schrijfcommando’s. Voor TCP vul je host en poort in; voor USB/RS485 alleen het seriële apparaat. De gateway/UART aan de warmtepomp moet 9600 baud, 8N1 en RTU gebruiken. Gebruik geen tweede onafhankelijke Modbus-master op dezelfde bus. Kies de temperatuurdelers passend bij het fysieke scherm: raw 350 bij 35 °C = deler 10; raw 35 bij 35 °C = deler 1. Metingen en setpoints kunnen verschillen. Bediening blijft vergrendeld totdat je de waarden in de opties hebt bevestigd.",
         "data": {
           "name": "Apparaatnaam",
           "transport": "Verbindingstype",
           "host": "IP-adres of hostnaam van gateway",
           "port": "TCP-poort",
           "serial_device": "USB/RS485-serieel apparaat",
-          "unit_id": "Modbus-apparaatadres"
+          "unit_id": "Modbus-apparaatadres",
+          "measurement_divisor": "Deler voor gemeten temperaturen",
+          "setpoint_divisor": "Deler voor ingestelde temperaturen"
         }
       },
       "reconfigure": {
@@ -23,7 +25,9 @@
           "host": "IP-adres of hostnaam van gateway",
           "port": "TCP-poort",
           "serial_device": "USB/RS485-serieel apparaat",
-          "unit_id": "Modbus-apparaatadres"
+          "unit_id": "Modbus-apparaatadres",
+          "measurement_divisor": "Deler voor gemeten temperaturen",
+          "setpoint_divisor": "Deler voor ingestelde temperaturen"
         }
       }
     },
@@ -42,7 +46,7 @@
     "step": {
       "init": {
         "title": "Uitlezen en bediening",
-        "description": "Begin met bediening uit. Volgens de PDF zijn temperaturen raw/10. Kies alleen raw/1 als het fysieke scherm dat bevestigt. Schalen voor metingen en setpoints zijn afzonderlijk instelbaar. Extra sensoren kun je daarna via de entiteitenlijst inschakelen.",
+        "description": "Temperatuurschaling verschilt per firmware en is tegenstrijdig beschreven in de handleiding. Controleer metingen en setpoints apart tegen het fysieke scherm. Raw 350 bij 35 °C: deler 10; raw 35 bij 35 °C: deler 1. Warmwater: standaard maximaal 65 °C, instelbaar tot 75 °C na controle van de installatie. Verwarming maximaal 60 °C volgens register 0x0301.",
         "data": {
           "scan_interval": "Uitleesinterval basiswaarden (seconden)",
           "slow_interval": "Uitleesinterval extra registers (seconden)",
@@ -189,7 +193,7 @@
         "name": "Waterpomp-PWM"
       },
       "flow_raw": {
-        "name": "Waterdebiet (ruw)"
+        "name": "Waterdebiet"
       },
       "dhw_return_temperature": {
         "name": "Retourtemperatuur warmwatercirculatie"
@@ -395,6 +399,12 @@
       },
       "protocol_version": {
         "name": "Protocolversie"
+      },
+      "dhw_sensor_enabled": {
+        "name": "Warmwatersensor ingeschakeld"
+      },
+      "temperature_control_mode": {
+        "name": "Regelmodus watertemperatuur"
       }
     },
     "number": {
@@ -549,6 +559,26 @@
     "button": {
       "refresh": {
         "name": "Alle waarden opnieuw uitlezen"
+      }
+    },
+    "climate": {
+      "climate_main": {
+        "name": "Verwarming en koeling",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "standard": "Standaard",
+              "powerful": "Krachtig",
+              "silent": "Stil",
+              "floor_heating": "Vloerverwarming"
+            }
+          }
+        }
+      }
+    },
+    "water_heater": {
+      "dhw_water_heater": {
+        "name": "Warmwaterboiler"
       }
     }
   },

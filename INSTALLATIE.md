@@ -1,12 +1,14 @@
 # HouseHeating Modbus — installatie en eerste ingebruikname
 
-**Versie 0.1.0 · experimentele praktijktestversie · doelmodel HH-C3-12**
+**Versie 0.2.0 · experimentele praktijktestversie · doelmodel HH-C3-12**
 
 Deze integratie is ontwikkeld tegen de gedeelde Modbus-API van Home Assistant Core 2026.10.1. Het pakket is ingesteld op minimaal die versie. De protocolcode en adapterlogica zijn met gesimuleerde antwoorden getest; een volledige Home Assistant-runtime en een echte warmtepomp zijn hier niet getest. Maak vooraf een Home Assistant-back-up.
 
 ## 1. Installeren
 
-Pak `househeating_modbus_v0.1.0.zip` uit. Kopieer alleen de map `custom_components/househeating` naar de configuratiemap van Home Assistant, zodat dit bestand bestaat:
+Gebruik bij voorkeur HACS, zoals beschreven in [README.md](README.md#installeren-met-hacs-aanbevolen). Hieronder staat het handmatige alternatief.
+
+Pak `househeating_modbus_v0.2.0.zip` uit. Kopieer alleen de map `custom_components/househeating` naar de configuratiemap van Home Assistant, zodat dit bestand bestaat:
 
 ```text
 /config/custom_components/househeating/manifest.json
@@ -38,9 +40,9 @@ Bij toevoegen worden uitsluitend leescommando's verzonden. De integratie schrijf
 
 Je krijgt één apparaat, met standaard onder andere buitentemperatuur, waterinlaat- en wateruitlaattemperatuur, compressorfrequentie, bedrijfsmodus, bedrijfsprofiel en de vier temperatuursetpoints. Aan/uit, moduskeuze en instelgetallen zijn al aanwezig maar blijven niet-beschikbaar zolang de bediening niet is vrijgegeven.
 
-Er zijn 74 register-sensoren beschikbaar. De meeste technische en optionele sensoren zijn standaard uitgeschakeld. Open de entiteitenlijst van het apparaat en schakel alleen de relevante extra entiteiten in, bijvoorbeeld buffervattemperatuur, boilertemperatuur, protocolversie of elektrisch ingangsvermogen. Een aangemaakte entiteit betekent niet dat die meting bij jouw configuratie fysiek aanwezig is.
+Er zijn 76 register-sensoren beschikbaar; leessensoren naast bedieningsentiteiten zijn standaard uitgeschakeld. De meeste technische en optionele sensoren zijn standaard uitgeschakeld. Open de entiteitenlijst van het apparaat en schakel alleen de relevante extra entiteiten in, bijvoorbeeld buffervattemperatuur, boilertemperatuur, protocolversie of elektrisch ingangsvermogen. Een aangemaakte entiteit betekent niet dat die meting bij jouw configuratie fysiek aanwezig is.
 
-Basiswaarden worden standaard elke 30 seconden gelezen. Extra registers en curven worden elke 120 seconden gelezen. Elke aanvraag bevat maximaal 16 registers; de minimale busrust is 120 milliseconden. Dit zijn conservatieve startinstellingen, geen garantie dat elke controller/gateway daarmee probleemloos werkt.
+Basiswaarden worden standaard elke 30 seconden gelezen. Boiler, debiet, vermogen en relais worden eveneens elke 30 seconden gelezen. Overige extra registers, configuratie en curven worden elke 120 seconden gelezen. Elke aanvraag bevat maximaal 16 registers; de minimale busrust is 120 milliseconden. Dit zijn conservatieve startinstellingen, geen garantie dat elke controller/gateway daarmee probleemloos werkt.
 
 ## 4. Temperatuurschaling verifiëren
 
@@ -75,7 +77,7 @@ De firmware-/protocolvingerafdruk is geen uniek serienummer. Een verandering blo
 
 Een modus- of temperatuurwijziging zet de warmtepomp niet automatisch aan. Een globale uitschakeling is niet uitsluitend het uitschakelen van ruimteverwarming. Houd daar rekening mee wanneer warmwater met ruimteverwarming wordt gecombineerd.
 
-Instellen gaat in hele graden Celsius. Standaardgrenzen: koeling 7–25 °C, verwarming 20–60 °C, vloerverwarming 20–45 °C, warmwater 20–65 °C. De plafonds voor verwarming, vloer en warmwater kun je in de opties verlagen. Het vloerplafond kan na controle tot de gedocumenteerde 60 °C worden verhoogd, maar dat is nadrukkelijk geen installatieadvies. Warmwater blijft in deze versie maximaal 65 °C, omdat de technische specificaties en de registertabel in de handleiding niet hetzelfde maximum vermelden.
+Instellen gaat in hele graden Celsius. Standaardgrenzen: koeling 7–25 °C, verwarming 20–60 °C, vloerverwarming 20–45 °C, warmwater 20–65 °C. De plafonds voor verwarming, vloer en warmwater kun je in de opties verlagen. Het vloerplafond kan na controle tot de gedocumenteerde 60 °C worden verhoogd, maar dat is nadrukkelijk geen installatieadvies. Warmwater begint met een schrijfplafond van 65 °C. Je kunt dat na controle verhogen tot 75 °C, ondersteund door register 0x0302 en de actuele HGB-productpagina. Verwarming blijft maximaal 60 °C volgens register 0x0301.
 
 Na een wijziging volgt een controle door teruglezen. Een niet-bevestigde opdracht levert een fout op en wordt door deze integratie niet automatisch opnieuw geschreven. Controleer bij een fout eerst de werkelijke toestand: een opdracht kan zijn uitgevoerd terwijl alleen het antwoord verloren ging.
 
@@ -95,9 +97,9 @@ Voor een nieuwe pakketversie: maak een back-up, vervang de map `househeating` vo
 
 Geen fabrieksreset, geforceerde compressor-/klepregeling, geforceerde ontdooiing, virtuele sensoren of onbeperkte raw-write-actie. Geen eigen stookcurve-, PV- of dynamische-prijsregeling: daarvoor zijn eerst bewezen basisbediening en aparte automations nodig.
 
-De eerste versie gebruikt `switch`, `select` en `number`, niet een `climate`-entiteit die gecombineerde warmwater-/verwarmingsmodi onjuist zou kunnen weergeven. De volledige normale moduskeuze blijft zo intact.
+Vanaf v0.2.0 zijn ook `climate` en `water_heater` beschikbaar. Verwarming uit behoudt actief warmwater; warmwater uit behoudt actieve ruimteverwarming of koeling. De globale schakelaar blijft de hele pomp bedienen. De boilerentiteit is alleen beschikbaar met een geldige boilermeting en bevestigde warmwaterfunctie. Zone 2 heeft nog geen eigen bediening.
 
-Ventilator en waterdebiet staan bewust ruw weergegeven waar de registertabel onvoldoende zekerheid geeft over eenheid of schaal. Het elektrische vermogen is de door de pomp gerapporteerde waarde, niet een gegarandeerd geijkte meting. De energieteller is niet als gevalideerde `total_increasing`-sensor aangemerkt en is daarom nog niet voor het energiedashboard bedoeld. Er is geen berekende COP.
+Ventilatorsnelheid blijft ruw weergegeven. Waterdebiet gebruikt L/min, onderbouwd door lopende parameter 25 op PDF-pagina 160 en register 0x0058 op PDF-pagina 167. Het elektrische vermogen is de door de pomp gerapporteerde waarde, niet een gegarandeerd geijkte meting. De energieteller is niet als gevalideerde `total_increasing`-sensor aangemerkt en is daarom nog niet voor het energiedashboard bedoeld. Er is geen berekende COP.
 
 ## 9. Diagnostiek verzamelen
 
@@ -105,6 +107,4 @@ Open de integratiekaart en kies **Diagnostische gegevens downloaden**. Het rappo
 
 ## 10. HACS en broncode
 
-Deze ZIP is direct handmatig installeerbaar. Het volledige project bevat daarnaast de map `custom_integration` als basis voor een eigen HACS-repository, inclusief `hacs.json`, eigen bibliotheek en tests. Er is in deze opdracht geen GitHub-repository of HACS-publicatie gemaakt. HACS-installatie wordt pas mogelijk nadat de inhoud van die map als repository is gepubliceerd en als aangepaste repository is toegevoegd.
-
-De map `core_integration` is ontwikkelvoorbereiding, geen geaccepteerde of direct installeerbare Core-integratie. Zie de checklist daar voor pakketpublicatie, echte runtime-tests en verdere review.
+Volg [README.md](README.md) voor HACS-installatie en updates. Alle runtimebestanden, inclusief de eigen bibliotheek, vertalingen en brand-iconen, staan onder `custom_components/househeating`. De Core-map is alleen ontwikkelvoorbereiding.

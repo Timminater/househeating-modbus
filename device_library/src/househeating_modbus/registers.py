@@ -5,7 +5,7 @@ No definitions or implementation are copied from third-party heat-pump projects.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import IntEnum
 
 
@@ -88,9 +88,10 @@ REGISTERS: tuple[Register, ...] = (
     temp("plate_temperature", 0x0055, "Plate heat exchanger temperature", group="extended", fault=(4, 2)),
     Register(key="pump_pwm", address=0x0057, name="Water pump PWM", page=167,
              unit="%", minimum=0, maximum=100, group="extended"),
-    # The register table does not establish a usable unit or scaling for flow.
-    Register(key="flow_raw", address=0x0058, name="Water flow (raw)", page=167,
-             group="extended", kind="raw"),
+    # Operating parameter 25 (PDF p160) establishes L/min; Modbus p167 says actual value.
+    # Keep the original key so existing entity identities remain stable.
+    Register(key="flow_raw", address=0x0058, name="Water flow", page=167,
+             group="fast", unit="L/min", device_class="volume_flow_rate", minimum=0, maximum=100),
     temp("dhw_return_temperature", 0x0059, "Hot-water circulation return temperature",
          group="extended", fault=(2, 10)),
     Register(key="unit_voltage", address=0x005A, name="Unit input voltage", page=167,
@@ -126,6 +127,10 @@ REGISTERS: tuple[Register, ...] = (
              page=168, group="extended", kind="raw"),
     *(Register(key=f"io_word_{n:04x}", address=n, name=f"I/O word 0x{n:04X}",
                page=166, group="extended", kind="bitfield") for n in range(0x19, 0x21)),
+    Register(key="dhw_sensor_enabled", address=0x0130, name="Hot-water sensor enabled", page=177,
+             kind="enum", group="config"),
+    Register(key="temperature_control_mode", address=0x0174, name="Water temperature control mode", page=179,
+             kind="enum", group="config"),
     *(Register(key=key, address=address, name=name, page=184, unit="°C",
                device_class="temperature", kind="setpoint", minimum=lo, maximum=hi,
                default_enabled=True, diagnostic=False)
@@ -155,6 +160,8 @@ REGISTERS: tuple[Register, ...] = (
           ("product_type_id", 0x0362, "Product type ID"),
           ("protocol_version", 0x0363, "Protocol version"))),
 )
+REGISTERS = tuple(replace(r, group="fast") if 0x51 <= r.address <= 0x5D or 0x19 <= r.address <= 0x20
+                  else r for r in REGISTERS)
 BY_KEY = {r.key: r for r in REGISTERS}
 BY_ADDRESS = {r.address: r for r in REGISTERS}
 SELECTS = {"operating_mode": MODE_OPTIONS, "operating_profile": PROFILE_OPTIONS,

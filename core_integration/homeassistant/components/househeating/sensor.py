@@ -3,6 +3,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, Sen
 from homeassistant.helpers.entity import EntityCategory
 
 from househeating_modbus import REGISTERS, SELECTS
+from househeating_modbus.registers import WRITABLE_KEYS
 from .entity import HouseHeatingEntity
 
 
@@ -15,7 +16,7 @@ class HouseHeatingSensor(HouseHeatingEntity, SensorEntity):
     def __init__(self, coordinator, register):
         super().__init__(coordinator, register.key)
         self.register = register
-        self._attr_entity_registry_enabled_default = register.default_enabled
+        self._attr_entity_registry_enabled_default = register.default_enabled and register.key not in WRITABLE_KEYS
         self._attr_entity_category = EntityCategory.DIAGNOSTIC if register.diagnostic else None
         self._attr_native_unit_of_measurement = register.unit
         self._attr_device_class = SensorDeviceClass(register.device_class) if register.device_class else None
@@ -51,4 +52,5 @@ class HouseHeatingSensor(HouseHeatingEntity, SensorEntity):
                 "raw_value": snapshot.raw.get(self.register.address),
                 "manual_pdf_page": self.register.page,
                 "register_group": self.register.group,
-                "optional_sample_time": snapshot.optional_timestamp if self.register.group != "core" else None}
+                "optional_sample_time": (snapshot.timestamp if self.register.group == "fast"
+                                         else snapshot.optional_timestamp if self.register.group != "core" else None)}

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import asyncio
 import logging
 from typing import Any
 
@@ -24,6 +25,7 @@ class HouseHeatingCoordinator(DataUpdateCoordinator[Snapshot]):
         self.entry = entry
         self.device = device
         self.force_optional = False
+        self._command_lock = asyncio.Lock()
 
     async def _async_update_data(self) -> Snapshot:
         try:
@@ -37,12 +39,27 @@ class HouseHeatingCoordinator(DataUpdateCoordinator[Snapshot]):
         return snapshot
 
     async def async_write(self, key: str, value: Any) -> None:
+        await self.async_control(lambda snapshot: [(key, value)])
+
+    async def async_control(self, plan) -> None:
+        """Serialize a whole UI command and build it against a fresh snapshot.
+
+        Each write is verified before proceeding; a failed step aborts the plan.
+        No rollback or automatic repeat is safe after an uncertain acknowledgement.
+        """
+        async with self._command_lock:
+            await self.async_refresh()
+            await self._async_control_locked(plan)
+
+    async def _async_control_locked(self, plan) -> None:
         if not self.last_update_success:
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="device_unavailable")
         if not self.device.control_ready:
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="control_locked")
         try:
-            await self.device.async_write(key, value)
+            self.device.validate_for_control()
+            for key, value in plan(self.device.snapshot):
+                await self.device.async_write(key, value)
         except HeatPumpError as err:
             # Never present an unconfirmed write as success. Refresh without resending.
             await self.async_refresh()

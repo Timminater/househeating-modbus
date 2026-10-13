@@ -18,7 +18,9 @@ if TYPE_CHECKING:
     from modbus_connection import ModbusUnit
 
 CORE_BLOCKS = ((0x0000, 10), (0x0040, 17), (0x0300, 8))
-EXTENDED_BLOCKS = (("extra", 0x0051, 13), ("zones", 0x0072, 12), ("io", 0x0019, 8))
+FAST_OPTIONAL_BLOCKS = (("extra", 0x0051, 13), ("io", 0x0019, 8))
+EXTENDED_BLOCKS = (("zones", 0x0072, 12), ("dhw_config", 0x0130, 1),
+                   ("temperature_control", 0x0174, 1))
 IDENTITY_BLOCK = (0x0360, 4)
 CURVE_BLOCK = (0x0313, 4)
 
@@ -107,6 +109,14 @@ class HeatPump:
                 optional_timestamp = self.snapshot.optional_timestamp
             raw.update(self._slow_raw)
             errors.update(self._slow_errors)
+            # Read frequently changing optional measurements on every scan, without
+            # making unsupported extras fatal to the mandatory polling cycle.
+            if self.config.extended:
+                for name, address, count in FAST_OPTIONAL_BLOCKS:
+                    try:
+                        raw.update(await self._read(address, count))
+                    except CommunicationError as err:
+                        errors[name] = str(err)
             self.snapshot = Snapshot(raw, errors, time(), optional_timestamp)
             return self.snapshot
 

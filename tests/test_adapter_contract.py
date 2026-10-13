@@ -77,7 +77,7 @@ async def test_setup_uses_shared_unit_and_no_writes(modules):
     hass,entry=harness(modules)
     assert await modules['__init__'].async_setup_entry(hass,entry)
     assert len(hass.shared_calls)==1
-    assert len(hass.config_entries.forwarded)==6
+    assert len(hass.config_entries.forwarded)==8
     assert not hass.unit.writes
     assert len(entry.unload_callbacks)==1
 

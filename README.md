@@ -2,140 +2,156 @@
   <img src="assets/logo.png" alt="HouseHeating Modbus" width="180">
 </p>
 
-# HouseHeating Modbus — installatie en eerste ingebruikname
+# HouseHeating Modbus
+
+Integratie voor de **HouseHeating HH-C3-12** via de gedeelde Modbus-verbinding
+van Home Assistant. Monitoring, verwarming/koeling, warmwater en normale setpoints.
+
+**Versie 0.2.0 · Home Assistant 2026.10.1 of nieuwer · experimenteel**
 
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Timminater&repository=househeating-modbus&category=integration)
 
-**Versie 0.1.0 · experimentele praktijktestversie · doelmodel HH-C3-12**
+Getest met echte Home Assistant-klassen en gesimuleerde Modbus-antwoorden.
+Werking op een echte warmtepomp is nog niet bevestigd.
 
-Deze integratie is ontwikkeld tegen de gedeelde Modbus-API van Home Assistant Core 2026.10.1. Het pakket is ingesteld op minimaal die versie. De protocolcode en adapterlogica zijn met gesimuleerde antwoorden getest; een volledige Home Assistant-runtime en een echte warmtepomp zijn hier niet getest. Maak vooraf een Home Assistant-back-up.
+## Installeren met HACS (aanbevolen)
 
-## 1. Installeren
+HACS moet al geïnstalleerd en ingesteld zijn. Deze integratie voeg je toe als
+**aangepaste repository**; hij staat niet in de standaardcatalogus.
 
-Pak `househeating_modbus_v0.1.0.zip` uit. Kopieer alleen de map `custom_components/househeating` naar de configuratiemap van Home Assistant, zodat dit bestand bestaat:
+1. Klik op **Open in HACS** hierboven en bevestig het toevoegen van de repository.
+2. Zoek in HACS naar **HouseHeating Modbus** en kies **Downloaden**.
+3. Kies de nieuwste release en herstart Home Assistant volledig.
+4. Ga naar **Instellingen > Apparaten & diensten > Integratie toevoegen** en zoek
+   **HouseHeating Modbus**.
+5. Stel de verbinding en temperatuurdelers in zoals hieronder beschreven.
 
-```text
-/config/custom_components/househeating/manifest.json
-```
+Werkt de knop niet? Open HACS, kies **Aangepaste repositories** in het menu,
+voeg `https://github.com/Timminater/househeating-modbus` toe met categorie
+**Integration / Integratie** en ga verder bij stap 2.
 
-De map `_vendor/househeating_modbus` moet daarbij meegekopieerd worden; die bevat de eigen apparaatbibliotheek. Installeer die bibliotheek niet apart in Home Assistant en wijzig geen Python-pakketten van Home Assistant handmatig.
+Voeg deze afzonderlijke repository toe, niet `Timminater/timminaters-integrations`.
 
-Herstart Home Assistant volledig. Ga daarna naar **Instellingen → Apparaten & diensten → Integratie toevoegen → HouseHeating Modbus**. De bedieningsnamen worden Nederlands bij een Nederlandstalig profiel.
+## Handmatig installeren
 
-Er is geen extra `modbus:`-blok in `configuration.yaml` nodig. Laat een bestaande integratie, los uitleesscript of ander onafhankelijk Modbus-programma niet tegelijkertijd dezelfde fysieke bus/gateway bedienen. Dit pakket opent zijn verbinding via de gedeelde Home Assistant-API, niet via een eigen Pymodbus-client.
+1. Download `househeating_modbus_v0.2.0.zip` bij de
+   [nieuwste release](https://github.com/Timminater/househeating-modbus/releases/latest).
+2. Pak het archief uit op je computer.
+3. Kopieer de volledige map `custom_components/househeating` naar de configuratiemap
+   van Home Assistant. `_vendor`, `translations` en `brand` moeten mee.
+4. Controleer dat `/config/custom_components/househeating/manifest.json` bestaat.
+5. Herstart Home Assistant en voeg de integratie toe via **Apparaten & diensten**.
 
-## 2. Verbinding kiezen
+De broncode-ZIP en `core_integration` zijn voor ontwikkeling. Kopieer die niet
+naar de Home Assistant-configuratie.
 
-| Keuze in het scherm | Wanneer gebruiken | Invullen |
-|---|---|---|
-| Modbus RTU over TCP | Transparante RS485-naar-netwerkbrug die RTU-frames doorstuurt | Host/IP en werkelijke TCP-poort |
-| Modbus TCP | Gateway die Modbus TCP/MBAP omzet naar RTU | Host/IP en werkelijke TCP-poort |
-| USB/RS485 | RS485-adapter rechtstreeks beschikbaar in Home Assistant | Serieel pad, liefst `/dev/serial/by-id/...` |
+## Verbinding en temperatuurdelers
 
-Het juiste type wordt bepaald door de gatewayconfiguratie; RTU-over-TCP en Modbus TCP zijn niet uitwisselbaar. De standaardpoort in het formulier is 502, maar jouw gateway kan een andere poort gebruiken. Een transparante gateway gebruikt aan de warmtepompzijde **9600 baud, 8 databits, geen pariteit, 1 stopbit, Modbus RTU**. Bij USB/RS485 stelt de integratie deze UART-instellingen zelf in. Adres 0 wordt geweigerd; vul het werkelijke apparaatadres tussen 1 en 247 in. De waarde 1 in het scherm is alleen een startwaarde, geen automatische adresdetectie.
+| Verbinding | Gebruik |
+|---|---|
+| RTU over TCP | Transparante RS485-netwerkbrug; host en werkelijke poort invullen |
+| Modbus TCP | Gateway die Modbus TCP omzet naar RTU |
+| USB/RS485 | Serieel pad in Home Assistant, liefst `/dev/serial/by-id/...` |
 
-Bij Home Assistant in een Unraid-VM moet een USB-adapter aan die VM beschikbaar zijn gemaakt; het pad moet in Home Assistant bestaan, niet alleen op de Unraid-host.
+De fysieke RS485-zijde gebruikt **9600 baud, 8N1, RTU**. Vul het werkelijke
+apparaatadres 1–247 in. Een extra `modbus:`-blok in YAML is niet nodig.
+Laat geen tweede onafhankelijke Modbus-master dezelfde fysieke bus bedienen.
 
-Laat de geschikte monitoringpoort en eventuele gelijktijdige communicatie van de oorspronkelijke controller controleren. De handleiding onderscheidt COM2/monitoring en COM4/controller, maar printrevisies kunnen verschillen. Een softwarematige gedeelde verbinding lost botsingen met een onafhankelijke fysieke master niet op. Werk niet aan een onder spanning staande warmtepomp.
-
-## 3. Eerst uitlezen
-
-Bij toevoegen worden uitsluitend leescommando's verzonden. De integratie schrijft geen standaardinstellingen, zet de pomp niet aan of uit en herstelt geen oude setpoints uit Home Assistant. Bestaande waarden worden van de warmtepomp gelezen.
-
-Je krijgt één apparaat, met standaard onder andere buitentemperatuur, waterinlaat- en wateruitlaattemperatuur, compressorfrequentie, bedrijfsmodus, bedrijfsprofiel en de vier temperatuursetpoints. Aan/uit, moduskeuze en instelgetallen zijn al aanwezig maar blijven niet-beschikbaar zolang de bediening niet is vrijgegeven.
-
-Er zijn 74 register-sensoren beschikbaar. De meeste technische en optionele sensoren zijn standaard uitgeschakeld. Open de entiteitenlijst van het apparaat en schakel alleen de relevante extra entiteiten in, bijvoorbeeld buffervattemperatuur, boilertemperatuur, protocolversie of elektrisch ingangsvermogen. Een aangemaakte entiteit betekent niet dat die meting bij jouw configuratie fysiek aanwezig is.
-
-Basiswaarden worden standaard elke 30 seconden gelezen. Extra registers en curven worden elke 120 seconden gelezen. Elke aanvraag bevat maximaal 16 registers; de minimale busrust is 120 milliseconden. Dit zijn conservatieve startinstellingen, geen garantie dat elke controller/gateway daarmee probleemloos werkt.
-
-## 4. Temperatuurschaling verifiëren
-
-De handleiding noemt raw/10, maar in verwante firmware/documentatie bestaan verschillen. Daarom zijn twee afzonderlijke delers instelbaar onder **Opties**:
-
-| Op het fysieke scherm | Ruwe Modbus-waarde | Deler |
-|---|---|---|
-| 35,0 °C | 350 | 10 |
+| Fysiek scherm | Ruwe waarde | Deler |
+|---|---:|---:|
+| 35 °C | 350 | 10 |
 | 35 °C | 35 | 1 |
 
-Controleer de **metingen én alle vier setpoints**. Neem niet aan dat ze dezelfde deler gebruiken. De ruwe waarde staat bij iedere register-sensor in de attributen en in de diagnostiek. Bewaar gewijzigde delers eerst met bediening uit; controleer daarna de cijfers opnieuw. Een ogenschijnlijk normale temperatuur bewijst niet dat de schaal correct is.
+Controleer metingen en setpoints afzonderlijk; de schalen kunnen verschillen.
+De handleiding is hierover tegenstrijdig. De integratie gokt de schaal niet.
+Wijzig de delers zo nodig via **Opties**; ruwe waarden staan in de sensorattributen
+en diagnostiek.
 
-De firmware-/protocolversie is standaard beschikbaar als uitgeschakelde diagnostische entiteit en altijd in de diagnostiek, voor zover het apparaat het register beantwoordt. Adressen zijn rechtstreeks overgenomen als nul-gebaseerde wire-adressen; tel er niet automatisch 1 of 40001 bij op.
+**Bediening begint vergrendeld.** Open de opties, controleer alle meetwaarden en
+setpoints, schakel bediening in en bevestig de vergelijking met het fysieke scherm.
+Bevestigen verzendt geen schrijfopdracht.
 
-## 5. Bediening vrijgeven
+## Entiteiten en gedrag
 
-Open de opties, zet **Modbus-bediening na bevestiging inschakelen** aan en ga verder. Er verschijnt een controlepagina met temperaturen, setpoints, ruwe waarden en firmware-/protocolinformatie. Vergelijk alle waarden met het fysieke bedieningsscherm. Bevestigen verzendt nog géén schrijfopdracht; het maakt de gewone bedieningsentiteiten daarna beschikbaar.
-
-Een ongeldige identiteit, ongeldige temperatuur, een herkende fout van een vereiste temperatuursensor, of een setpoint buiten het documentatiebereik verhindert vrijgave. Dat is opzettelijk. Raadpleeg de diagnostiek in plaats van de controle weg te programmeren.
-
-De firmware-/protocolvingerafdruk is geen uniek serienummer. Een verandering blokkeert schrijven; een vervangende pomp met identieke versiegegevens kan hiermee niet worden onderscheiden.
-
-## 6. Wat je kunt bedienen
-
-| Bediening | Functie |
+| Entiteit | Functie |
 |---|---|
-| Aan/uit-schakelaar | Normale globale software-aan/uitopdracht; geen netspanningsonderbreking |
-| Bedrijfsmodus | Koeling, verwarming, warmwater, vloerverwarming en combinaties met warmwater |
-| Bedrijfsprofiel | Standaard, krachtig of stil |
-| Vier instelgetallen | Gewenste temperaturen voor koeling, verwarming, warmwater en vloerverwarming |
-| Vier curvekeuzes | Ingebouwde curves; alleen protocol ≥ 130; entiteiten standaard uitgeschakeld |
+| Verwarming en koeling (`climate`) | Koelen, verwarmen, vloerverwarmingspreset en temperatuur |
+| Warmwaterboiler (`water_heater`) | Warmwater aan/uit en boilertemperatuur |
+| Globale schakelaar | Hele warmtepomp aan/uit |
+| Keuzes en vier instelgetallen | Volledige normale modi, profiel, curves en afzonderlijke setpoints |
+| Sensoren en diagnostiek | Temperaturen, waterdebiet, vermogen, fouten en ruwe registers |
+| Uitleesknop | Alle waarden opnieuw lezen |
 
-Een modus- of temperatuurwijziging zet de warmtepomp niet automatisch aan. Een globale uitschakeling is niet uitsluitend het uitschakelen van ruimteverwarming. Houd daar rekening mee wanneer warmwater met ruimteverwarming wordt gecombineerd.
+Bedieningsentiteiten blijven niet-beschikbaar zolang bediening is vergrendeld.
+De boiler vereist ook een geldige boilermeting en bevestigde warmwaterfunctie
+(P48 of een warmwatermodus). Na herstel kan hij zonder opnieuw toevoegen beschikbaar worden.
 
-Instellen gaat in hele graden Celsius. Standaardgrenzen: koeling 7–25 °C, verwarming 20–60 °C, vloerverwarming 20–45 °C, warmwater 20–65 °C. De plafonds voor verwarming, vloer en warmwater kun je in de opties verlagen. Het vloerplafond kan na controle tot de gedocumenteerde 60 °C worden verhoogd, maar dat is nadrukkelijk geen installatieadvies. Warmwater blijft in deze versie maximaal 65 °C, omdat de technische specificaties en de registertabel in de handleiding niet hetzelfde maximum vermelden.
+Verwarming uit op de thermostaat behoudt actief warmwater. Warmwater uit op de
+boiler behoudt ruimteverwarming of koeling. De globale schakelaar zet alles uit.
+De stille/krachtige preset geldt voor de hele warmtepomp; de boiler verandert
+dit profiel niet. De thermostaat toont de regelwatertemperatuur volgens P116,
+geen kamertemperatuur. Bij onbekende P116 blijft die meting leeg.
+Zone 2 heeft nog geen eigen bedieningsentiteit.
 
-Na een wijziging volgt een controle door teruglezen. Een niet-bevestigde opdracht levert een fout op en wordt door deze integratie niet automatisch opnieuw geschreven. Controleer bij een fout eerst de werkelijke toestand: een opdracht kan zijn uitgevoerd terwijl alleen het antwoord verloren ging.
+| Setpoint | Schrijfbereik |
+|---|---|
+| Koeling | 7–25 °C |
+| Verwarming | 20–60 °C |
+| Vloerverwarming | 20–45 °C standaard; plafond instelbaar tot 60 °C |
+| Warmwater | 20–65 °C standaard; plafond instelbaar tot 75 °C |
 
-Gebruik voor eerste tests een kleine setpointwijziging in de reeds gekozen modus. Voer geen snelle aan/uit- of verwarm/koelwisselingen uit om de integratie te testen. De softwarevrijgave is geen technische keuring van het hydraulische of elektrische systeem.
+De [HGB-productpagina](https://www.hgb-trading.nl/househeating-warmtepomp-monoblock-12-kw-162229888.html)
+noemt watertemperaturen tot 75 °C. Register `0x0302` ondersteunt 20–75 °C voor
+warmwater; `0x0301` vermeldt specifiek 20–60 °C voor verwarming. De grenzen blijven
+daarom afzonderlijk. Controleer de installatie voordat je een plafond verhoogt.
 
-## 7. Storingen, herstarts en updates
+Basiswaarden, boiler, debiet, vermogen en relais verversen standaard elke
+30 seconden. Overige extra registers en configuratie elke 120 seconden.
+Niet-ondersteunde extra groepen blokkeren de basisuitlezing niet. Extra metingen
+kun je uitzetten via de opties. Leessensoren naast bedieningsentiteiten zijn
+bij nieuwe installaties standaard uitgeschakeld.
 
-Een mislukte basisuitlezing maakt het apparaat niet-beschikbaar; oude basiswaarden worden niet opnieuw als verse metingen gepresenteerd. Een mislukte extra registergroep maakt alleen die groep niet-beschikbaar. Als een firmware maar een deel van zo'n groep ondersteunt, is die groep in deze versie niet afzonderlijk onderverdeeld naar ondersteunde adressen. Schakel de extra groepen tijdelijk uit en gebruik de diagnostiek voor het maken van een passend profiel.
+## Updates en herstel
 
-Met de knop **Alle waarden opnieuw uitlezen** kun je ook na een communicatiefout een nieuwe poging doen. Bij terugkeer van de verbinding worden optionele gegevens opnieuw gelezen. Niet elke tijdelijk stilgevallen verbinding wordt door de netwerklaag onmiddellijk ontdekt; de volgende aanvraag en de ingestelde time-out bepalen mede hoe snel uitval zichtbaar wordt.
+Maak eerst een Home Assistant-back-up. Installeer updates via HACS en herstart
+Home Assistant. Handmatig vervang je alleen `custom_components/househeating`
+door de nieuwe versie; behoud andere integraties.
 
-Een Home Assistant-herstart leidt niet tot het terugschrijven van oude of lege instellingen. De pomp blijft bron van de huidige instellingen. Het wijzigen van de verbinding via **Opnieuw configureren** behoudt de apparaat- en entiteitsidentiteiten binnen dezelfde config-entry, maar vergrendelt bediening opnieuw. Verwijder de integratie niet om alleen een IP-adres te wijzigen.
+Gebruik **Opnieuw configureren** voor een gewijzigd gatewayadres. Apparaat- en
+entiteitsidentiteiten blijven behouden; bediening wordt opnieuw vergrendeld.
+Een herstart schrijft geen oude instellingen terug. Elke schrijfopdracht wordt
+eenmaal verstuurd en teruggelezen. Een onzekere opdracht wordt niet automatisch herhaald.
 
-Voor een nieuwe pakketversie: maak een back-up, vervang de map `househeating` volledig door de nieuwe versie en herstart Home Assistant. Installeer niet tegelijk de core-voorbereidingsversie en de custom-versie.
+Geen geforceerd ontdooien, fabrieksreset, virtuele temperatuursensoren of onbeperkte
+registerwrites. De energieteller is nog niet gevalideerd voor het energiedashboard;
+er is geen ongeteste COP-berekening.
 
-## 8. Bewuste beperkingen
+Zie [INSTALLATIE.md](INSTALLATIE.md), [SOURCES.md](SOURCES.md) en
+[TEST_REPORT.md](TEST_REPORT.md) voor ingebruikname, bronnen en testgrenzen.
 
-Geen fabrieksreset, geforceerde compressor-/klepregeling, geforceerde ontdooiing, virtuele sensoren of onbeperkte raw-write-actie. Geen eigen stookcurve-, PV- of dynamische-prijsregeling: daarvoor zijn eerst bewezen basisbediening en aparte automations nodig.
+## Ontwikkelen
 
-De eerste versie gebruikt `switch`, `select` en `number`, niet een `climate`-entiteit die gecombineerde warmwater-/verwarmingsmodi onjuist zou kunnen weergeven. De volledige normale moduskeuze blijft zo intact.
-
-Ventilator en waterdebiet staan bewust ruw weergegeven waar de registertabel onvoldoende zekerheid geeft over eenheid of schaal. Het elektrische vermogen is de door de pomp gerapporteerde waarde, niet een gegarandeerd geijkte meting. De energieteller is niet als gevalideerde `total_increasing`-sensor aangemerkt en is daarom nog niet voor het energiedashboard bedoeld. Er is geen berekende COP.
-
-## 9. Diagnostiek verzamelen
-
-Open de integratiekaart en kies **Diagnostische gegevens downloaden**. Het rapport bevat registerwaarden, firmware/protocol, gebruikte schalen, fouten per extra groep en de laatste schrijfbevestiging. Hostnaam/IP en het seriële apparaatpad worden uit foutteksten verwijderd. Controleer een rapport altijd zelf voordat je het publiek deelt.
-
-## 10. HACS en broncode
-
-Deze ZIP is direct handmatig installeerbaar. Het volledige project bevat daarnaast de map `custom_integration` als basis voor een eigen HACS-repository, inclusief `hacs.json`, eigen bibliotheek en tests. Er is in deze opdracht geen GitHub-repository of HACS-publicatie gemaakt. HACS-installatie wordt pas mogelijk nadat de inhoud van die map als repository is gepubliceerd en als aangepaste repository is toegevoegd.
-
-De map `core_integration` is ontwikkelvoorbereiding, geen geaccepteerde of direct installeerbare Core-integratie. Zie de checklist daar voor pakketpublicatie, echte runtime-tests en verdere review.
-
-## Repository en ontwikkeling
-
-Deze repository bevat de custom-integratie direct onder `custom_components/househeating`,
-zodat HACS deze kan installeren. Voeg `https://github.com/Timminater/househeating-modbus`
-toe als aangepaste HACS-repository van categorie **Integration**.
-
-De apparaatbibliotheek staat onder `device_library`, de Core-voorbereiding onder
-`core_integration`. Deze laatste map is geen installeerbare of geaccepteerde Core-integratie.
-Zie [REGISTERS.md](REGISTERS.md), [SOURCES.md](SOURCES.md),
-[TEST_REPORT.md](TEST_REPORT.md) en [GEMINI_REVIEW.md](GEMINI_REVIEW.md).
-
-Ontwikkelen met Python 3.13 of nieuwer:
+Alle runtimebestanden staan onder `custom_components/househeating`, inclusief
+de apparaatbibliotheek, vertalingen en brand-iconen. HACS installeert die ene map
+uit de gekozen release. `device_library` is de zelfstandige bibliotheek;
+`core_integration` is alleen voorbereiding op een eventuele Core-bijdrage.
 
 ```sh
-python -m pip install pytest pytest-asyncio
-python -m pytest -q tests
+python -m pip install pytest pytest-asyncio probatio==0.13.0
 python -m pytest -q device_library/tests
+python -m pytest -q tests
 python tools/vendor_library.py
 python tools/package.py
 ```
 
-De tests gebruiken testdoubles; ze bewijzen geen werking op een echte warmtepomp.
-De oorspronkelijke v0.1.0-runtime is behouden. Alleen repositorymetadata en
-ontwikkelpaden zijn aangepast. De Gemini-code is niet overgenomen.
+Voor tests met echte Home Assistant-klassen gebruik je apart Python 3.14:
+
+```sh
+python -m pip install -r requirements-test-runtime.txt
+python -m pytest -q runtime_tests
+python tools/validate_release.py
+```
+
+Voer contracttests en runtime-tests afzonderlijk uit: contracttests vervangen
+HA-modules door testdoubles. [ci/test.yaml](ci/test.yaml) bevat een nog niet
+geactiveerd GitHub Actions-voorbeeld; lokaal uitvoeren kan wel.
