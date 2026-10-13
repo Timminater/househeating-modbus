@@ -1,0 +1,566 @@
+{
+  "title": "HouseHeating Modbus",
+  "config": {
+    "step": {
+      "user": {
+        "title": "HouseHeating Modbus",
+        "description": "Experimental HH-C3-12 integration. Starts without writing. For TCP enter host/port; for USB/RS485 enter the serial device. Configure the heat-pump gateway/UART for 9600 baud, 8N1 and RTU. Do not add an independent second master on the same bus.",
+        "data": {
+          "name": "Device name",
+          "transport": "Connection type",
+          "host": "Gateway IP address or hostname",
+          "port": "TCP port",
+          "serial_device": "USB/RS485 serial device",
+          "unit_id": "Modbus unit ID"
+        }
+      },
+      "reconfigure": {
+        "title": "Change connection",
+        "description": "Keep the existing device and entities. Control is locked again.",
+        "data": {
+          "name": "Device name",
+          "transport": "Connection type",
+          "host": "Gateway IP address or hostname",
+          "port": "TCP port",
+          "serial_device": "USB/RS485 serial device",
+          "unit_id": "Modbus unit ID"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "No usable Modbus response. Check wiring, framing, unit ID and logs.",
+      "invalid_connection": "Invalid connection details or an incompatible register layout.",
+      "invalid_options": "Check the configuration value ranges.",
+      "commissioning_failed": "Commissioning failed. Check temperature divisors, readable firmware/protocol and all four setpoints. Save with control disabled first and review diagnostics.",
+      "confirmation_required": "Confirm the comparison with the physical controller first."
+    },
+    "abort": {
+      "reconfigure_successful": "Connection updated; authorize control again."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Polling and control",
+        "description": "Start with control disabled. The manual specifies raw/10 temperatures. Only use raw/1 after checking the physical controller. Measurements and setpoints have separate divisors. Extra entities can be enabled in the entity list.",
+        "data": {
+          "scan_interval": "Basic polling interval (seconds)",
+          "slow_interval": "Extra registers interval (seconds)",
+          "measurement_divisor": "Measured temperature divisor",
+          "setpoint_divisor": "Setpoint temperature divisor",
+          "max_read": "Maximum registers per request",
+          "spacing_ms": "Minimum bus quiet time (milliseconds)",
+          "timeout": "Minimum request timeout (seconds)",
+          "extended": "Read extra register groups",
+          "curves": "Read native curve registers",
+          "max_heating": "Maximum allowed heating setpoint (°C)",
+          "max_floor": "Maximum allowed floor-heating setpoint (°C)",
+          "max_dhw": "Maximum allowed hot-water setpoint (°C)",
+          "allow_control": "Enable Modbus control after confirmation"
+        }
+      },
+      "confirm_control": {
+        "title": "Check the actual readings",
+        "description": "Compare the following values with the physical controller. Confirmation does NOT send any command; it enables the controls afterwards. This is not a hardware or safety certification.\n\n{readings}",
+        "data": {
+          "confirm_values": "I compared every displayed temperature and setpoint with the physical controller and verified the installation is ready for these commands"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "No usable Modbus response. Check wiring, framing, unit ID and logs.",
+      "invalid_connection": "Invalid connection details or an incompatible register layout.",
+      "invalid_options": "Check the configuration value ranges.",
+      "commissioning_failed": "Commissioning failed. Check temperature divisors, readable firmware/protocol and all four setpoints. Save with control disabled first and review diagnostics.",
+      "confirmation_required": "Confirm the comparison with the physical controller first."
+    }
+  },
+  "selector": {
+    "transport": {
+      "options": {
+        "rtu_tcp": "Modbus RTU over TCP (transparent gateway)",
+        "tcp": "Modbus TCP (protocol-converting gateway)",
+        "serial": "USB/RS485 (9600 baud, 8N1)"
+      }
+    },
+    "temperature_divisor": {
+      "options": {
+        "10": "raw / 10 (350 = 35.0 °C)",
+        "1": "raw / 1 (35 = 35 °C)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status_1": {
+        "name": "Running status 1"
+      },
+      "status_2": {
+        "name": "Running status 2"
+      },
+      "fault_word_2": {
+        "name": "Fault word 0x0002"
+      },
+      "fault_word_3": {
+        "name": "Fault word 0x0003"
+      },
+      "fault_word_4": {
+        "name": "Fault word 0x0004"
+      },
+      "fault_word_5": {
+        "name": "Fault word 0x0005"
+      },
+      "fault_word_6": {
+        "name": "Fault word 0x0006"
+      },
+      "fault_word_7": {
+        "name": "Fault word 0x0007"
+      },
+      "fault_word_8": {
+        "name": "Fault word 0x0008"
+      },
+      "fault_word_9": {
+        "name": "Fault word 0x0009"
+      },
+      "compressor_frequency": {
+        "name": "Compressor frequency"
+      },
+      "fan_raw": {
+        "name": "Fan speed (raw)"
+      },
+      "eev_steps": {
+        "name": "Expansion valve steps"
+      },
+      "evi_steps": {
+        "name": "EVI valve steps"
+      },
+      "ac_voltage": {
+        "name": "AC input voltage"
+      },
+      "ac_current": {
+        "name": "AC input current"
+      },
+      "compressor_current": {
+        "name": "Compressor phase current"
+      },
+      "ipm_temperature": {
+        "name": "Compressor IPM temperature"
+      },
+      "high_pressure_saturation_temperature": {
+        "name": "High-pressure saturation temperature"
+      },
+      "low_pressure_saturation_temperature": {
+        "name": "Low-pressure saturation temperature"
+      },
+      "outdoor_temperature": {
+        "name": "Outdoor temperature"
+      },
+      "outdoor_coil_temperature": {
+        "name": "Outdoor coil temperature"
+      },
+      "indoor_coil_temperature": {
+        "name": "Indoor coil temperature"
+      },
+      "suction_temperature": {
+        "name": "Suction temperature"
+      },
+      "discharge_temperature": {
+        "name": "Discharge temperature"
+      },
+      "water_inlet_temperature": {
+        "name": "Water inlet temperature"
+      },
+      "water_outlet_temperature": {
+        "name": "Water outlet temperature"
+      },
+      "economizer_inlet_temperature": {
+        "name": "Economizer inlet temperature"
+      },
+      "economizer_outlet_temperature": {
+        "name": "Economizer outlet temperature"
+      },
+      "dhw_temperature": {
+        "name": "Hot-water tank temperature"
+      },
+      "plate_temperature": {
+        "name": "Plate heat exchanger temperature"
+      },
+      "pump_pwm": {
+        "name": "Water pump PWM"
+      },
+      "flow_raw": {
+        "name": "Water flow (raw)"
+      },
+      "dhw_return_temperature": {
+        "name": "Hot-water circulation return temperature"
+      },
+      "unit_voltage": {
+        "name": "Unit input voltage"
+      },
+      "unit_current": {
+        "name": "Unit input current"
+      },
+      "input_power": {
+        "name": "Reported electrical input power"
+      },
+      "reported_energy": {
+        "name": "Reported electrical energy"
+      },
+      "solar_temperature": {
+        "name": "Solar-water temperature"
+      },
+      "zone_2_temperature": {
+        "name": "Zone 2 temperature"
+      },
+      "buffer_temperature": {
+        "name": "Buffer temperature"
+      },
+      "total_outlet_temperature": {
+        "name": "Total outlet temperature"
+      },
+      "phase_b_voltage": {
+        "name": "Phase B voltage"
+      },
+      "phase_b_current": {
+        "name": "Phase B current"
+      },
+      "phase_c_voltage": {
+        "name": "Phase C voltage"
+      },
+      "phase_c_current": {
+        "name": "Phase C current"
+      },
+      "smart_grid_raw": {
+        "name": "Smart-grid status (raw)"
+      },
+      "mixing_valve_zone_2_raw": {
+        "name": "Zone 2 mixing valve (raw)"
+      },
+      "zone_1_temperature": {
+        "name": "Zone 1 mixed temperature"
+      },
+      "mixing_valve_zone_1_raw": {
+        "name": "Zone 1 mixing valve (raw)"
+      },
+      "io_word_0019": {
+        "name": "I/O word 0x0019"
+      },
+      "io_word_001a": {
+        "name": "I/O word 0x001A"
+      },
+      "io_word_001b": {
+        "name": "I/O word 0x001B"
+      },
+      "io_word_001c": {
+        "name": "I/O word 0x001C"
+      },
+      "io_word_001d": {
+        "name": "I/O word 0x001D"
+      },
+      "io_word_001e": {
+        "name": "I/O word 0x001E"
+      },
+      "io_word_001f": {
+        "name": "I/O word 0x001F"
+      },
+      "io_word_0020": {
+        "name": "I/O word 0x0020"
+      },
+      "cooling_setpoint": {
+        "name": "Cooling setpoint"
+      },
+      "heating_setpoint": {
+        "name": "Heating setpoint"
+      },
+      "dhw_setpoint": {
+        "name": "Hot-water setpoint"
+      },
+      "floor_setpoint": {
+        "name": "Floor-heating setpoint"
+      },
+      "operating_mode": {
+        "name": "Operating mode",
+        "state": {
+          "cooling": "Cooling",
+          "heating": "Heating",
+          "hot_water": "Hot water",
+          "floor_heating": "Floor heating",
+          "hot_water_cooling": "Hot water cooling",
+          "hot_water_heating": "Hot water heating",
+          "hot_water_floor_heating": "Hot water floor heating"
+        }
+      },
+      "power": {
+        "name": "Power command",
+        "state": {
+          "off": "Off",
+          "on": "On"
+        }
+      },
+      "indoor_setpoint_raw": {
+        "name": "Indoor setpoint (raw)"
+      },
+      "operating_profile": {
+        "name": "Operating profile",
+        "state": {
+          "standard": "Standard",
+          "powerful": "Powerful",
+          "silent": "Silent"
+        }
+      },
+      "cooling_curve": {
+        "name": "Cooling curve",
+        "state": {
+          "off": "Off",
+          "high_1": "High 1",
+          "high_2": "High 2",
+          "high_3": "High 3",
+          "high_4": "High 4",
+          "high_5": "High 5",
+          "high_6": "High 6",
+          "high_7": "High 7",
+          "high_8": "High 8",
+          "low_1": "Low 1",
+          "low_2": "Low 2",
+          "low_3": "Low 3",
+          "low_4": "Low 4",
+          "low_5": "Low 5",
+          "low_6": "Low 6",
+          "low_7": "Low 7",
+          "low_8": "Low 8"
+        }
+      },
+      "heating_curve": {
+        "name": "Heating curve",
+        "state": {
+          "off": "Off",
+          "high_1": "High 1",
+          "high_2": "High 2",
+          "high_3": "High 3",
+          "high_4": "High 4",
+          "high_5": "High 5",
+          "high_6": "High 6",
+          "high_7": "High 7",
+          "high_8": "High 8",
+          "low_1": "Low 1",
+          "low_2": "Low 2",
+          "low_3": "Low 3",
+          "low_4": "Low 4",
+          "low_5": "Low 5",
+          "low_6": "Low 6",
+          "low_7": "Low 7",
+          "low_8": "Low 8"
+        }
+      },
+      "dhw_curve": {
+        "name": "Hot-water curve",
+        "state": {
+          "off": "Off",
+          "curve_1": "Curve 1",
+          "curve_2": "Curve 2",
+          "curve_3": "Curve 3",
+          "curve_4": "Curve 4"
+        }
+      },
+      "floor_curve": {
+        "name": "Floor-heating curve",
+        "state": {
+          "off": "Off",
+          "high_1": "High 1",
+          "high_2": "High 2",
+          "high_3": "High 3",
+          "high_4": "High 4",
+          "high_5": "High 5",
+          "high_6": "High 6",
+          "high_7": "High 7",
+          "high_8": "High 8",
+          "low_1": "Low 1",
+          "low_2": "Low 2",
+          "low_3": "Low 3",
+          "low_4": "Low 4",
+          "low_5": "Low 5",
+          "low_6": "Low 6",
+          "low_7": "Low 7",
+          "low_8": "Low 8"
+        }
+      },
+      "firmware_version": {
+        "name": "Firmware version (raw)"
+      },
+      "product_type": {
+        "name": "Product type"
+      },
+      "product_type_id": {
+        "name": "Product type ID"
+      },
+      "protocol_version": {
+        "name": "Protocol version"
+      }
+    },
+    "number": {
+      "cooling_setpoint": {
+        "name": "Cooling setpoint"
+      },
+      "heating_setpoint": {
+        "name": "Heating setpoint"
+      },
+      "dhw_setpoint": {
+        "name": "Hot-water setpoint"
+      },
+      "floor_setpoint": {
+        "name": "Floor-heating setpoint"
+      }
+    },
+    "select": {
+      "operating_mode": {
+        "name": "Operating mode",
+        "state": {
+          "cooling": "Cooling",
+          "heating": "Heating",
+          "hot_water": "Hot water",
+          "floor_heating": "Floor heating",
+          "hot_water_cooling": "Hot water cooling",
+          "hot_water_heating": "Hot water heating",
+          "hot_water_floor_heating": "Hot water floor heating"
+        }
+      },
+      "operating_profile": {
+        "name": "Operating profile",
+        "state": {
+          "standard": "Standard",
+          "powerful": "Powerful",
+          "silent": "Silent"
+        }
+      },
+      "cooling_curve": {
+        "name": "Cooling curve",
+        "state": {
+          "off": "Off",
+          "high_1": "High 1",
+          "high_2": "High 2",
+          "high_3": "High 3",
+          "high_4": "High 4",
+          "high_5": "High 5",
+          "high_6": "High 6",
+          "high_7": "High 7",
+          "high_8": "High 8",
+          "low_1": "Low 1",
+          "low_2": "Low 2",
+          "low_3": "Low 3",
+          "low_4": "Low 4",
+          "low_5": "Low 5",
+          "low_6": "Low 6",
+          "low_7": "Low 7",
+          "low_8": "Low 8"
+        }
+      },
+      "heating_curve": {
+        "name": "Heating curve",
+        "state": {
+          "off": "Off",
+          "high_1": "High 1",
+          "high_2": "High 2",
+          "high_3": "High 3",
+          "high_4": "High 4",
+          "high_5": "High 5",
+          "high_6": "High 6",
+          "high_7": "High 7",
+          "high_8": "High 8",
+          "low_1": "Low 1",
+          "low_2": "Low 2",
+          "low_3": "Low 3",
+          "low_4": "Low 4",
+          "low_5": "Low 5",
+          "low_6": "Low 6",
+          "low_7": "Low 7",
+          "low_8": "Low 8"
+        }
+      },
+      "dhw_curve": {
+        "name": "Hot-water curve",
+        "state": {
+          "off": "Off",
+          "curve_1": "Curve 1",
+          "curve_2": "Curve 2",
+          "curve_3": "Curve 3",
+          "curve_4": "Curve 4"
+        }
+      },
+      "floor_curve": {
+        "name": "Floor-heating curve",
+        "state": {
+          "off": "Off",
+          "high_1": "High 1",
+          "high_2": "High 2",
+          "high_3": "High 3",
+          "high_4": "High 4",
+          "high_5": "High 5",
+          "high_6": "High 6",
+          "high_7": "High 7",
+          "high_8": "High 8",
+          "low_1": "Low 1",
+          "low_2": "Low 2",
+          "low_3": "Low 3",
+          "low_4": "Low 4",
+          "low_5": "Low 5",
+          "low_6": "Low 6",
+          "low_7": "Low 7",
+          "low_8": "Low 8"
+        }
+      }
+    },
+    "switch": {
+      "power": {
+        "name": "Heat pump power"
+      }
+    },
+    "binary_sensor": {
+      "running": {
+        "name": "Unit running"
+      },
+      "waiting": {
+        "name": "Unit waiting"
+      },
+      "alarm": {
+        "name": "Fault alarm"
+      },
+      "defrost": {
+        "name": "Defrost status (bit 8)"
+      },
+      "antifreeze_stage_1": {
+        "name": "Antifreeze stage 1"
+      },
+      "antifreeze_stage_2": {
+        "name": "Antifreeze stage 2"
+      },
+      "target_reached": {
+        "name": "Target reached"
+      },
+      "fault_shutdown": {
+        "name": "Fault shutdown"
+      },
+      "sterilization": {
+        "name": "Sterilization active"
+      },
+      "control_enabled": {
+        "name": "Modbus control authorized"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Read all values again"
+      }
+    }
+  },
+  "exceptions": {
+    "control_locked": {
+      "message": "Control is locked. Verify the readings and authorize control in the options."
+    },
+    "device_unavailable": {
+      "message": "No current connection to the heat pump."
+    },
+    "command_failed": {
+      "message": "Command not confirmed: {error}"
+    }
+  }
+}

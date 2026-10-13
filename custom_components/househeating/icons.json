@@ -1,0 +1,44 @@
+{
+  "entity": {
+    "sensor": {},
+    "number": {},
+    "select": {
+      "operating_mode": {
+        "default": "mdi:heat-pump"
+      },
+      "operating_profile": {
+        "default": "mdi:heat-pump"
+      },
+      "cooling_curve": {
+        "default": "mdi:chart-bell-curve"
+      },
+      "heating_curve": {
+        "default": "mdi:chart-bell-curve"
+      },
+      "dhw_curve": {
+        "default": "mdi:chart-bell-curve"
+      },
+      "floor_curve": {
+        "default": "mdi:chart-bell-curve"
+      }
+    },
+    "switch": {
+      "power": {
+        "default": "mdi:heat-pump"
+      }
+    },
+    "binary_sensor": {
+      "control_enabled": {
+        "default": "mdi:shield-check"
+      },
+      "defrost": {
+        "default": "mdi:snowflake-melt"
+      }
+    },
+    "button": {
+      "refresh": {
+        "default": "mdi:refresh"
+      }
+    }
+  }
+}

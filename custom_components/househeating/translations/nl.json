@@ -1,0 +1,566 @@
+{
+  "title": "HouseHeating Modbus",
+  "config": {
+    "step": {
+      "user": {
+        "title": "HouseHeating Modbus",
+        "description": "Experimentele integratie voor HH-C3-12. Begint zonder schrijfcommando’s. Voor TCP vul je host en poort in; voor USB/RS485 alleen het seriële apparaat. De gateway/UART aan de warmtepomp moet 9600 baud, 8N1 en RTU gebruiken. Gebruik geen tweede onafhankelijke Modbus-master op dezelfde bus.",
+        "data": {
+          "name": "Apparaatnaam",
+          "transport": "Verbindingstype",
+          "host": "IP-adres of hostnaam van gateway",
+          "port": "TCP-poort",
+          "serial_device": "USB/RS485-serieel apparaat",
+          "unit_id": "Modbus-apparaatadres"
+        }
+      },
+      "reconfigure": {
+        "title": "Verbinding wijzigen",
+        "description": "Apparaat en entiteiten blijven behouden. Bediening wordt opnieuw vergrendeld.",
+        "data": {
+          "name": "Apparaatnaam",
+          "transport": "Verbindingstype",
+          "host": "IP-adres of hostnaam van gateway",
+          "port": "TCP-poort",
+          "serial_device": "USB/RS485-serieel apparaat",
+          "unit_id": "Modbus-apparaatadres"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Geen bruikbaar Modbus-antwoord. Controleer aansluiting, framing, apparaatadres en logboek.",
+      "invalid_connection": "Verbindingsgegevens zijn onjuist of de registers passen niet bij dit protocol.",
+      "invalid_options": "Controleer de bereiken van de ingestelde opties.",
+      "commissioning_failed": "Vrijgave mislukt. Controleer de temperatuurdelers en of firmware, protocol en alle vier setpoints geldig uitleesbaar zijn. Bewaar eerst met bediening uit en bekijk de diagnostiek.",
+      "confirmation_required": "Bevestig eerst de vergelijking met het fysieke bedieningsscherm."
+    },
+    "abort": {
+      "reconfigure_successful": "Verbinding bijgewerkt; geef bediening opnieuw vrij."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Uitlezen en bediening",
+        "description": "Begin met bediening uit. Volgens de PDF zijn temperaturen raw/10. Kies alleen raw/1 als het fysieke scherm dat bevestigt. Schalen voor metingen en setpoints zijn afzonderlijk instelbaar. Extra sensoren kun je daarna via de entiteitenlijst inschakelen.",
+        "data": {
+          "scan_interval": "Uitleesinterval basiswaarden (seconden)",
+          "slow_interval": "Uitleesinterval extra registers (seconden)",
+          "measurement_divisor": "Deler voor gemeten temperaturen",
+          "setpoint_divisor": "Deler voor ingestelde temperaturen",
+          "max_read": "Maximaal aantal registers per aanvraag",
+          "spacing_ms": "Minimale rusttijd op de bus (milliseconden)",
+          "timeout": "Minimale time-out per aanvraag (seconden)",
+          "extended": "Extra registergroepen uitlezen",
+          "curves": "Ingebouwde curveregisters uitlezen",
+          "max_heating": "Maximale insteltemperatuur verwarming (°C)",
+          "max_floor": "Maximale insteltemperatuur vloerverwarming (°C)",
+          "max_dhw": "Maximale insteltemperatuur warmwater (°C)",
+          "allow_control": "Modbus-bediening na bevestiging inschakelen"
+        }
+      },
+      "confirm_control": {
+        "title": "Controleer de echte meetwaarden",
+        "description": "Vergelijk onderstaande waarden met het bedieningsscherm. Bevestigen stuurt nog GEEN opdracht; daarna worden de bedieningselementen beschikbaar. Dit is geen hardware- of veiligheidskeuring.\n\n{readings}",
+        "data": {
+          "confirm_values": "Ik heb ALLE getoonde temperaturen en setpoints met het fysieke bedieningsscherm vergeleken en gecontroleerd dat de installatie klaar is voor deze opdrachten"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Geen bruikbaar Modbus-antwoord. Controleer aansluiting, framing, apparaatadres en logboek.",
+      "invalid_connection": "Verbindingsgegevens zijn onjuist of de registers passen niet bij dit protocol.",
+      "invalid_options": "Controleer de bereiken van de ingestelde opties.",
+      "commissioning_failed": "Vrijgave mislukt. Controleer de temperatuurdelers en of firmware, protocol en alle vier setpoints geldig uitleesbaar zijn. Bewaar eerst met bediening uit en bekijk de diagnostiek.",
+      "confirmation_required": "Bevestig eerst de vergelijking met het fysieke bedieningsscherm."
+    }
+  },
+  "selector": {
+    "transport": {
+      "options": {
+        "rtu_tcp": "Modbus RTU over TCP (transparante gateway)",
+        "tcp": "Modbus TCP (gateway met protocolomzetting)",
+        "serial": "USB/RS485 (9600 baud, 8N1)"
+      }
+    },
+    "temperature_divisor": {
+      "options": {
+        "10": "raw / 10 (350 = 35,0 °C)",
+        "1": "raw / 1 (35 = 35 °C)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status_1": {
+        "name": "Bedrijfsstatus 1 (bits)"
+      },
+      "status_2": {
+        "name": "Bedrijfsstatus 2 (bits)"
+      },
+      "fault_word_2": {
+        "name": "Fout-/diagnosewoord 0x0002"
+      },
+      "fault_word_3": {
+        "name": "Fout-/diagnosewoord 0x0003"
+      },
+      "fault_word_4": {
+        "name": "Fout-/diagnosewoord 0x0004"
+      },
+      "fault_word_5": {
+        "name": "Fout-/diagnosewoord 0x0005"
+      },
+      "fault_word_6": {
+        "name": "Fout-/diagnosewoord 0x0006"
+      },
+      "fault_word_7": {
+        "name": "Fout-/diagnosewoord 0x0007"
+      },
+      "fault_word_8": {
+        "name": "Fout-/diagnosewoord 0x0008"
+      },
+      "fault_word_9": {
+        "name": "Fout-/diagnosewoord 0x0009"
+      },
+      "compressor_frequency": {
+        "name": "Compressorfrequentie"
+      },
+      "fan_raw": {
+        "name": "Ventilatorsnelheid (ruw)"
+      },
+      "eev_steps": {
+        "name": "Stappen expansieventiel"
+      },
+      "evi_steps": {
+        "name": "Stappen EVI-ventiel"
+      },
+      "ac_voltage": {
+        "name": "AC-ingangsspanning"
+      },
+      "ac_current": {
+        "name": "AC-ingangsstroom"
+      },
+      "compressor_current": {
+        "name": "Compressorfasestroom"
+      },
+      "ipm_temperature": {
+        "name": "Temperatuur compressormodule"
+      },
+      "high_pressure_saturation_temperature": {
+        "name": "Verzadigingstemperatuur hoge druk"
+      },
+      "low_pressure_saturation_temperature": {
+        "name": "Verzadigingstemperatuur lage druk"
+      },
+      "outdoor_temperature": {
+        "name": "Buitentemperatuur"
+      },
+      "outdoor_coil_temperature": {
+        "name": "Temperatuur buitenspoel"
+      },
+      "indoor_coil_temperature": {
+        "name": "Temperatuur binnenspoel"
+      },
+      "suction_temperature": {
+        "name": "Zuigtemperatuur"
+      },
+      "discharge_temperature": {
+        "name": "Persgastemperatuur"
+      },
+      "water_inlet_temperature": {
+        "name": "Waterinlaattemperatuur"
+      },
+      "water_outlet_temperature": {
+        "name": "Wateruitlaattemperatuur"
+      },
+      "economizer_inlet_temperature": {
+        "name": "Economizerinlaattemperatuur"
+      },
+      "economizer_outlet_temperature": {
+        "name": "Economizeruitlaattemperatuur"
+      },
+      "dhw_temperature": {
+        "name": "Boilertemperatuur"
+      },
+      "plate_temperature": {
+        "name": "Temperatuur platenwarmtewisselaar"
+      },
+      "pump_pwm": {
+        "name": "Waterpomp-PWM"
+      },
+      "flow_raw": {
+        "name": "Waterdebiet (ruw)"
+      },
+      "dhw_return_temperature": {
+        "name": "Retourtemperatuur warmwatercirculatie"
+      },
+      "unit_voltage": {
+        "name": "Ingangsspanning eenheid"
+      },
+      "unit_current": {
+        "name": "Ingangsstroom eenheid"
+      },
+      "input_power": {
+        "name": "Gerapporteerd elektrisch ingangsvermogen"
+      },
+      "reported_energy": {
+        "name": "Gerapporteerd elektriciteitsverbruik"
+      },
+      "solar_temperature": {
+        "name": "Temperatuur zonneboiler"
+      },
+      "zone_2_temperature": {
+        "name": "Temperatuur zone 2"
+      },
+      "buffer_temperature": {
+        "name": "Buffervattemperatuur"
+      },
+      "total_outlet_temperature": {
+        "name": "Totale wateruitlaattemperatuur"
+      },
+      "phase_b_voltage": {
+        "name": "Spanning fase B"
+      },
+      "phase_b_current": {
+        "name": "Stroom fase B"
+      },
+      "phase_c_voltage": {
+        "name": "Spanning fase C"
+      },
+      "phase_c_current": {
+        "name": "Stroom fase C"
+      },
+      "smart_grid_raw": {
+        "name": "Smart-gridstatus (ruw)"
+      },
+      "mixing_valve_zone_2_raw": {
+        "name": "Mengklep zone 2 (ruw)"
+      },
+      "zone_1_temperature": {
+        "name": "Mengtemperatuur zone 1"
+      },
+      "mixing_valve_zone_1_raw": {
+        "name": "Mengklep zone 1 (ruw)"
+      },
+      "io_word_0019": {
+        "name": "I/O-statuswoord 0x0019"
+      },
+      "io_word_001a": {
+        "name": "I/O-statuswoord 0x001A"
+      },
+      "io_word_001b": {
+        "name": "I/O-statuswoord 0x001B"
+      },
+      "io_word_001c": {
+        "name": "I/O-statuswoord 0x001C"
+      },
+      "io_word_001d": {
+        "name": "I/O-statuswoord 0x001D"
+      },
+      "io_word_001e": {
+        "name": "I/O-statuswoord 0x001E"
+      },
+      "io_word_001f": {
+        "name": "I/O-statuswoord 0x001F"
+      },
+      "io_word_0020": {
+        "name": "I/O-statuswoord 0x0020"
+      },
+      "cooling_setpoint": {
+        "name": "Gewenste koeltemperatuur"
+      },
+      "heating_setpoint": {
+        "name": "Gewenste verwarmingstemperatuur"
+      },
+      "dhw_setpoint": {
+        "name": "Gewenste warmwatertemperatuur"
+      },
+      "floor_setpoint": {
+        "name": "Gewenste vloerverwarmingstemperatuur"
+      },
+      "operating_mode": {
+        "name": "Bedrijfsmodus",
+        "state": {
+          "cooling": "Koeling",
+          "heating": "Verwarming",
+          "hot_water": "Warmwater",
+          "floor_heating": "Vloerverwarming",
+          "hot_water_cooling": "Warmwater + koeling",
+          "hot_water_heating": "Warmwater + verwarming",
+          "hot_water_floor_heating": "Warmwater + vloerverwarming"
+        }
+      },
+      "power": {
+        "name": "Warmtepomp aan/uit",
+        "state": {
+          "off": "Uit",
+          "on": "Aan"
+        }
+      },
+      "indoor_setpoint_raw": {
+        "name": "Gewenste binnentemperatuur (ruw)"
+      },
+      "operating_profile": {
+        "name": "Bedrijfsprofiel",
+        "state": {
+          "standard": "Standaard",
+          "powerful": "Krachtig",
+          "silent": "Stil"
+        }
+      },
+      "cooling_curve": {
+        "name": "Koelcurve",
+        "state": {
+          "off": "Uit",
+          "high_1": "Hoge-temperatuurcurve 1",
+          "high_2": "Hoge-temperatuurcurve 2",
+          "high_3": "Hoge-temperatuurcurve 3",
+          "high_4": "Hoge-temperatuurcurve 4",
+          "high_5": "Hoge-temperatuurcurve 5",
+          "high_6": "Hoge-temperatuurcurve 6",
+          "high_7": "Hoge-temperatuurcurve 7",
+          "high_8": "Hoge-temperatuurcurve 8",
+          "low_1": "Lage-temperatuurcurve 1",
+          "low_2": "Lage-temperatuurcurve 2",
+          "low_3": "Lage-temperatuurcurve 3",
+          "low_4": "Lage-temperatuurcurve 4",
+          "low_5": "Lage-temperatuurcurve 5",
+          "low_6": "Lage-temperatuurcurve 6",
+          "low_7": "Lage-temperatuurcurve 7",
+          "low_8": "Lage-temperatuurcurve 8"
+        }
+      },
+      "heating_curve": {
+        "name": "Verwarmingscurve",
+        "state": {
+          "off": "Uit",
+          "high_1": "Hoge-temperatuurcurve 1",
+          "high_2": "Hoge-temperatuurcurve 2",
+          "high_3": "Hoge-temperatuurcurve 3",
+          "high_4": "Hoge-temperatuurcurve 4",
+          "high_5": "Hoge-temperatuurcurve 5",
+          "high_6": "Hoge-temperatuurcurve 6",
+          "high_7": "Hoge-temperatuurcurve 7",
+          "high_8": "Hoge-temperatuurcurve 8",
+          "low_1": "Lage-temperatuurcurve 1",
+          "low_2": "Lage-temperatuurcurve 2",
+          "low_3": "Lage-temperatuurcurve 3",
+          "low_4": "Lage-temperatuurcurve 4",
+          "low_5": "Lage-temperatuurcurve 5",
+          "low_6": "Lage-temperatuurcurve 6",
+          "low_7": "Lage-temperatuurcurve 7",
+          "low_8": "Lage-temperatuurcurve 8"
+        }
+      },
+      "dhw_curve": {
+        "name": "Warmwatercurve",
+        "state": {
+          "off": "Uit",
+          "curve_1": "Curve 1",
+          "curve_2": "Curve 2",
+          "curve_3": "Curve 3",
+          "curve_4": "Curve 4"
+        }
+      },
+      "floor_curve": {
+        "name": "Vloerverwarmingscurve",
+        "state": {
+          "off": "Uit",
+          "high_1": "Hoge-temperatuurcurve 1",
+          "high_2": "Hoge-temperatuurcurve 2",
+          "high_3": "Hoge-temperatuurcurve 3",
+          "high_4": "Hoge-temperatuurcurve 4",
+          "high_5": "Hoge-temperatuurcurve 5",
+          "high_6": "Hoge-temperatuurcurve 6",
+          "high_7": "Hoge-temperatuurcurve 7",
+          "high_8": "Hoge-temperatuurcurve 8",
+          "low_1": "Lage-temperatuurcurve 1",
+          "low_2": "Lage-temperatuurcurve 2",
+          "low_3": "Lage-temperatuurcurve 3",
+          "low_4": "Lage-temperatuurcurve 4",
+          "low_5": "Lage-temperatuurcurve 5",
+          "low_6": "Lage-temperatuurcurve 6",
+          "low_7": "Lage-temperatuurcurve 7",
+          "low_8": "Lage-temperatuurcurve 8"
+        }
+      },
+      "firmware_version": {
+        "name": "Firmwareversie (ruw)"
+      },
+      "product_type": {
+        "name": "Producttype"
+      },
+      "product_type_id": {
+        "name": "Producttype-ID"
+      },
+      "protocol_version": {
+        "name": "Protocolversie"
+      }
+    },
+    "number": {
+      "cooling_setpoint": {
+        "name": "Gewenste koeltemperatuur"
+      },
+      "heating_setpoint": {
+        "name": "Gewenste verwarmingstemperatuur"
+      },
+      "dhw_setpoint": {
+        "name": "Gewenste warmwatertemperatuur"
+      },
+      "floor_setpoint": {
+        "name": "Gewenste vloerverwarmingstemperatuur"
+      }
+    },
+    "select": {
+      "operating_mode": {
+        "name": "Bedrijfsmodus",
+        "state": {
+          "cooling": "Koeling",
+          "heating": "Verwarming",
+          "hot_water": "Warmwater",
+          "floor_heating": "Vloerverwarming",
+          "hot_water_cooling": "Warmwater + koeling",
+          "hot_water_heating": "Warmwater + verwarming",
+          "hot_water_floor_heating": "Warmwater + vloerverwarming"
+        }
+      },
+      "operating_profile": {
+        "name": "Bedrijfsprofiel",
+        "state": {
+          "standard": "Standaard",
+          "powerful": "Krachtig",
+          "silent": "Stil"
+        }
+      },
+      "cooling_curve": {
+        "name": "Koelcurve",
+        "state": {
+          "off": "Uit",
+          "high_1": "Hoge-temperatuurcurve 1",
+          "high_2": "Hoge-temperatuurcurve 2",
+          "high_3": "Hoge-temperatuurcurve 3",
+          "high_4": "Hoge-temperatuurcurve 4",
+          "high_5": "Hoge-temperatuurcurve 5",
+          "high_6": "Hoge-temperatuurcurve 6",
+          "high_7": "Hoge-temperatuurcurve 7",
+          "high_8": "Hoge-temperatuurcurve 8",
+          "low_1": "Lage-temperatuurcurve 1",
+          "low_2": "Lage-temperatuurcurve 2",
+          "low_3": "Lage-temperatuurcurve 3",
+          "low_4": "Lage-temperatuurcurve 4",
+          "low_5": "Lage-temperatuurcurve 5",
+          "low_6": "Lage-temperatuurcurve 6",
+          "low_7": "Lage-temperatuurcurve 7",
+          "low_8": "Lage-temperatuurcurve 8"
+        }
+      },
+      "heating_curve": {
+        "name": "Verwarmingscurve",
+        "state": {
+          "off": "Uit",
+          "high_1": "Hoge-temperatuurcurve 1",
+          "high_2": "Hoge-temperatuurcurve 2",
+          "high_3": "Hoge-temperatuurcurve 3",
+          "high_4": "Hoge-temperatuurcurve 4",
+          "high_5": "Hoge-temperatuurcurve 5",
+          "high_6": "Hoge-temperatuurcurve 6",
+          "high_7": "Hoge-temperatuurcurve 7",
+          "high_8": "Hoge-temperatuurcurve 8",
+          "low_1": "Lage-temperatuurcurve 1",
+          "low_2": "Lage-temperatuurcurve 2",
+          "low_3": "Lage-temperatuurcurve 3",
+          "low_4": "Lage-temperatuurcurve 4",
+          "low_5": "Lage-temperatuurcurve 5",
+          "low_6": "Lage-temperatuurcurve 6",
+          "low_7": "Lage-temperatuurcurve 7",
+          "low_8": "Lage-temperatuurcurve 8"
+        }
+      },
+      "dhw_curve": {
+        "name": "Warmwatercurve",
+        "state": {
+          "off": "Uit",
+          "curve_1": "Curve 1",
+          "curve_2": "Curve 2",
+          "curve_3": "Curve 3",
+          "curve_4": "Curve 4"
+        }
+      },
+      "floor_curve": {
+        "name": "Vloerverwarmingscurve",
+        "state": {
+          "off": "Uit",
+          "high_1": "Hoge-temperatuurcurve 1",
+          "high_2": "Hoge-temperatuurcurve 2",
+          "high_3": "Hoge-temperatuurcurve 3",
+          "high_4": "Hoge-temperatuurcurve 4",
+          "high_5": "Hoge-temperatuurcurve 5",
+          "high_6": "Hoge-temperatuurcurve 6",
+          "high_7": "Hoge-temperatuurcurve 7",
+          "high_8": "Hoge-temperatuurcurve 8",
+          "low_1": "Lage-temperatuurcurve 1",
+          "low_2": "Lage-temperatuurcurve 2",
+          "low_3": "Lage-temperatuurcurve 3",
+          "low_4": "Lage-temperatuurcurve 4",
+          "low_5": "Lage-temperatuurcurve 5",
+          "low_6": "Lage-temperatuurcurve 6",
+          "low_7": "Lage-temperatuurcurve 7",
+          "low_8": "Lage-temperatuurcurve 8"
+        }
+      }
+    },
+    "switch": {
+      "power": {
+        "name": "Warmtepomp aan/uit"
+      }
+    },
+    "binary_sensor": {
+      "running": {
+        "name": "Eenheid actief"
+      },
+      "waiting": {
+        "name": "Eenheid wacht"
+      },
+      "alarm": {
+        "name": "Foutalarm"
+      },
+      "defrost": {
+        "name": "Ontdooistatus (bit 8)"
+      },
+      "antifreeze_stage_1": {
+        "name": "Vorstbescherming niveau 1"
+      },
+      "antifreeze_stage_2": {
+        "name": "Vorstbescherming niveau 2"
+      },
+      "target_reached": {
+        "name": "Doeltemperatuur bereikt"
+      },
+      "fault_shutdown": {
+        "name": "Uitgeschakeld door storing"
+      },
+      "sterilization": {
+        "name": "Sterilisatie actief"
+      },
+      "control_enabled": {
+        "name": "Modbus-bediening vrijgegeven"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Alle waarden opnieuw uitlezen"
+      }
+    }
+  },
+  "exceptions": {
+    "control_locked": {
+      "message": "Bediening is vergrendeld. Controleer de waarden en geef bediening vrij via de opties."
+    },
+    "device_unavailable": {
+      "message": "Geen actuele verbinding met de warmtepomp."
+    },
+    "command_failed": {
+      "message": "Opdracht niet bevestigd: {error}"
+    }
+  }
+}
