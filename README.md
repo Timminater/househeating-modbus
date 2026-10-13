@@ -1,4 +1,10 @@
+<p align="center">
+  <img src="assets/logo.png" alt="HouseHeating Modbus" width="180">
+</p>
+
 # HouseHeating Modbus — installatie en eerste ingebruikname
+
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Timminater&repository=househeating-modbus&category=integration)
 
 **Versie 0.1.0 · experimentele praktijktestversie · doelmodel HH-C3-12**
 
