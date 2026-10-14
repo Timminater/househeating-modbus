@@ -131,6 +131,140 @@ class HouseHeatingOptionsFlow(OptionsFlowWithReload):
         self._preview = ""
 
     async def async_step_init(self, user_input=None):
+        # Retain direct submissions from older clients/tests, while presenting
+        # an isolated monitoring route that never re-commissions device control.
+        if user_input is not None:
+            return await self.async_step_control(user_input)
+        return self.async_show_menu(step_id="init", menu_options=["control", "monitoring", "operation", "weather_curve"])
+
+    async def async_step_operation(self,user_input=None):
+        if user_input is not None:
+            options=dict(self.config_entry.options)
+            options["operation_statistics"]=bool(user_input["operation_statistics"])
+            return self.async_create_entry(title="",data=options)
+        return self.async_show_form(step_id="operation",data_schema=vol.Schema({
+            vol.Required("operation_statistics",default=self.config_entry.options.get("operation_statistics",False)):bool}))
+
+    async def async_step_weather_curve(self,user_input=None):
+        from dataclasses import asdict
+        from househeating_modbus.operation import CurveConfig
+        from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
+        defaults=asdict(CurveConfig.from_options(self.config_entry.options))
+        defaults.pop("confirmation_id",None)
+        defaults["confirm_control"]=False
+        errors={}
+        if user_input is not None:
+            try:
+                data=dict(user_input)
+                from uuid import uuid4
+                data["confirmation_id"]=uuid4().hex if data.get("automatic") else ""
+                for key in ("outdoor_entity","pv_entity","battery_entity"):
+                    data[key]=data.get(key) or ""
+                candidate=CurveConfig(**data)
+                options=dict(self.config_entry.options)
+                low,high=device_config(options).limits(candidate.target)
+                if candidate.water_min<low or candidate.water_max>high:
+                    raise ValueError("Curve must stay inside commissioned limits")
+                if candidate.automatic and (not options.get("allow_control") or len(options.get("authorized_identity",[]))!=4):
+                    raise ValueError("Commission control before enabling automatic weather compensation")
+                from homeassistant.helpers import entity_registry as er
+                registry=er.async_get(self.hass)
+                for key,kind,units in (("outdoor_entity","temperature",("°C","°F","K")),
+                                       ("pv_entity","power",("W","kW")),("battery_entity","battery",("%",))):
+                    entity_id=getattr(candidate,key)
+                    if not entity_id:
+                        continue
+                    registered=registry.async_get(entity_id)
+                    if registered and registered.platform==DOMAIN and (key!="outdoor_entity" or not registered.unique_id.endswith("_outdoor_temperature")):
+                        raise ValueError("Derived HouseHeating sources cannot drive the curve")
+                    state=self.hass.states.get(entity_id)
+                    if state is None or state.attributes.get("device_class")!=kind or state.attributes.get("unit_of_measurement") not in units:
+                        raise ValueError("Invalid source metadata")
+                options["weather_curve"]=asdict(candidate)
+                return self.async_create_entry(title="",data=options)
+            except (TypeError,ValueError):
+                errors["base"]="invalid_curve"
+                defaults.update(user_input)
+        schema={}
+        for key,value in defaults.items():
+            if key.endswith("_entity"):
+                kind={"outdoor_entity":"temperature","pv_entity":"power","battery_entity":"battery"}[key]
+                schema[vol.Optional(key,default=value or None)]=vol.Any(None,EntitySelector(
+                    EntitySelectorConfig(filter={"domain":"sensor","device_class":kind})))
+            elif key in ("enabled","automatic","confirm_control"):
+                schema[vol.Required(key,default=value)]=bool
+            elif key=="target":
+                schema[vol.Required(key,default=value)]=SelectSelector(SelectSelectorConfig(
+                    options=["heating_setpoint","floor_setpoint","dhw_setpoint","cooling_setpoint"],translation_key="curve_target"))
+            else:
+                schema[vol.Required(key,default=value)]=vol.Coerce(float)
+        return self.async_show_form(step_id="weather_curve",data_schema=vol.Schema(schema),errors=errors)
+
+    async def async_step_monitoring(self, user_input=None):
+        from dataclasses import asdict
+        from househeating_modbus.telemetry import MonitoringConfig
+        from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
+        from homeassistant.helpers import entity_registry as er
+        defaults = asdict(MonitoringConfig.from_options(DEFAULT_OPTIONS | dict(self.config_entry.options)))
+        errors = {}
+        if user_input is not None:
+            try:
+                data = dict(user_input)
+                for key in ("external_power", "external_energy", "external_heat_power"):
+                    data[key] = data.get(key) or ""
+                candidate = MonitoringConfig(**data)
+                if candidate.enabled and (candidate.source == "external" or candidate.thermal_source == "external"):
+                    registry = er.async_get(self.hass)
+                    from .sensor import MONITORING_SENSORS
+                    sources=[]
+                    if candidate.source=="external":
+                        sources.extend(((candidate.external_power,"power"),(candidate.external_energy,"energy")))
+                    if candidate.thermal_source=="external":
+                        sources.append((candidate.external_heat_power,"power"))
+                        if candidate.source=="external" and candidate.external_heat_power==candidate.external_power:
+                            raise ValueError("Electrical and thermal power must be different sources")
+                    for entity_id, kind in sources:
+                        if not entity_id:
+                            continue
+                        registered = registry.async_get(entity_id)
+                        if registered and registered.platform == DOMAIN and any(
+                            registered.unique_id.endswith("_" + key) for key in MONITORING_SENSORS):
+                            raise ValueError("Derived sensors cannot be monitoring sources")
+                        state = self.hass.states.get(entity_id)
+                        units = ("W", "kW") if kind == "power" else ("Wh", "kWh")
+                        if state is None or state.attributes.get("device_class") != kind or state.attributes.get("unit_of_measurement") not in units:
+                            raise ValueError("Invalid external source metadata")
+            except (ValueError, TypeError):
+                errors["base"] = "invalid_monitoring"
+                defaults.update(user_input)
+            else:
+                # Merge only the monitoring namespace: preserve all control
+                # authorization, connection, scaling and unknown future options.
+                options = dict(self.config_entry.options)
+                options["monitoring"] = asdict(candidate)
+                return self.async_create_entry(title="", data=options)
+        schema = {}
+        for key, value in defaults.items():
+            if key in ("enabled", "thermal_confirmed"):
+                validator = bool
+            elif key == "source":
+                validator = SelectSelector(SelectSelectorConfig(options=["modbus", "external"], translation_key="monitoring_source"))
+            elif key == "thermal_source":
+                validator=SelectSelector(SelectSelectorConfig(options=["hydraulic","external"],translation_key="thermal_source"))
+            elif key in ("external_power", "external_energy", "external_heat_power"):
+                # Empty optional selectors are omitted, not serialized as invalid entities.
+                selector_kind = "energy" if key == "external_energy" else "power"
+                schema[vol.Optional(key, default=value or None)] = vol.Any(None, EntitySelector(
+                    EntitySelectorConfig(filter={"domain": "sensor", "device_class": selector_kind})))
+                continue
+            elif key == "fluid_reference":
+                validator = str
+            else:
+                validator = vol.Coerce(float)
+            schema[vol.Required(key, default=value)] = validator
+        return self.async_show_form(step_id="monitoring", data_schema=vol.Schema(schema), errors=errors)
+
+    async def async_step_control(self, user_input=None):
         errors = {}
         options = DEFAULT_OPTIONS | dict(self.config_entry.options)
         if user_input is not None:
@@ -163,7 +297,7 @@ class HouseHeatingOptionsFlow(OptionsFlowWithReload):
                     return await self.async_step_confirm_control()
                 return self.async_create_entry(title="", data=pending)
             options = pending
-        return self.async_show_form(step_id="init", data_schema=options_schema(options), errors=errors)
+        return self.async_show_form(step_id="control", data_schema=options_schema(options), errors=errors)
 
     async def async_step_confirm_control(self, user_input=None):
         errors = {}

@@ -43,6 +43,7 @@ class Coordinator(Generic):
         self.hass = hass
         self.last_update_success = True
         self.data = None
+        self.update_interval = kwargs.get('update_interval')
 
     async def async_refresh(self):
         try:

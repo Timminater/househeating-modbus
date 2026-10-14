@@ -19,7 +19,12 @@ async def async_get_config_entry_diagnostics(hass, entry):
         "last_write": device.last_write,
         "last_sample": snapshot.timestamp,
         "last_optional_sample": snapshot.optional_timestamp,
+        "sample_windows": {f"0x{a:04X}": asdict(w) for a, w in snapshot.samples.items()},
     }
+    if coordinator.monitoring is not None:
+        result["monitoring"] = coordinator.monitoring.diagnostics()
+    if coordinator.operation is not None:
+        result["operation"] = coordinator.operation.diagnostics()
     secrets = [str(entry.data[k]) for k in ("host", "serial_device") if entry.data.get(k)]
 
     def redact(value):

@@ -1,5 +1,35 @@
 # Registercatalogus v0.2.0
 
+## Aanvulling 0.4.0 — leesbare relaisstatus
+
+PDF p166 geeft 0x0019–0x001C als relaiswoorden. PDF p173–174 bevestigt
+compressor 1 op 0x001A bit 0; de verdere gebruikte relaisbits staan op p174.
+De nieuwe entiteiten decoderen alleen gedocumenteerde bits uit reeds bekende
+leeswoorden. Een ontbrekende/verouderde groep levert geen OFF-status op.
+De waargenomen compressorstatistieken zijn afgeleid en hebben geen eigen
+Modbus-register. Nieuwe foutentiteiten gebruiken de bestaande FAULT_LABELS.
+
+Geen schrijfadres, schrijfallowlist, schaal, vrijgave of verificatieregel is
+uitgebreid. De eigen stooklijn gebruikt uitsluitend een bestaand setpoint via
+dezelfde beveiligde route. Externe meter- en PV-bronnen zijn HA-entiteiten,
+geen virtuele injectie in apparaatregisters.
+
+## Monitoring in lokale versie 0.3.0
+
+De bestaande registercatalogus en entiteitsidentiteiten blijven behouden.
+
+| Bron | Onderbouwing | Gebruik |
+|---|---|---|
+| 0x005C | PDF p167, raw / 100 naar kW | Elektrisch vermogen; optioneel geïntegreerde energie |
+| 0x005D | PDF p167, gerapporteerd in kWh | Alleen apparaatdiagnostiek; resolutie/reset/overloop niet bewezen |
+| 0x004F / 0x0050 | PDF p167, inlaat/uitlaat | Bestaande meetdeler en foutonderdrukking behouden |
+| 0x0058 | PDF p167 echte waarde; p160 parameter 25 noemt L/min | Berekend debiet met expliciete schaalbevestiging en correctiefactor |
+
+Afgeleide entiteiten krijgen geen verzonnen Modbus-registeradres. De bestaande
+`flow_raw`-sleutel en gerapporteerde sensor blijven behouden; de gekalibreerde
+sensor is afzonderlijk. Geen wijziging aan schrijfadressen of allowlists.
+Zie [ENERGIEMONITORING.md](ENERGIEMONITORING.md) voor formules en metadata.
+
 Adressen zijn de hexadecimale, nul-gebaseerde adressen op de Modbus-bus.
 Bron: meegeleverde HouseHeating-handleiding; paginanummers hieronder zijn PDF-pagina’s.
 De kolom schrijven betekent: uitsluitend na expliciete vrijgave en verificatie.

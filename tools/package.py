@@ -27,7 +27,7 @@ def main():
         for path in sorted((base / 'custom_components').rglob('*')):
             if include(path):
                 archive.write(path, path.relative_to(base))
-        for name in ('README.md', 'assets/logo.png', 'INSTALLATIE.md', 'REGISTERS.md', 'SOURCES.md', 'TEST_REPORT.md', 'LICENSE'):
+        for name in ('README.md', 'assets/logo.png', 'INSTALLATIE.md', 'ENERGIEMONITORING.md', 'FUNCTIES.md', 'REGISTERS.md', 'SOURCES.md', 'TEST_REPORT.md', 'LICENSE'):
             archive.write(ROOT / name, name)
     with zipfile.ZipFile(full, 'w', zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(ROOT.rglob('*')):

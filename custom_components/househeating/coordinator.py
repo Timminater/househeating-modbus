@@ -26,16 +26,33 @@ class HouseHeatingCoordinator(DataUpdateCoordinator[Snapshot]):
         self.device = device
         self.force_optional = False
         self._command_lock = asyncio.Lock()
+        self.monitoring = None
+        self.operation = None
 
     async def _async_update_data(self) -> Snapshot:
         try:
-            snapshot = await self.device.async_update(force_optional=self.force_optional)
+            kwargs = {"force_optional": self.force_optional}
+            if self.monitoring is not None:
+                kwargs["telemetry_enabled"] = True
+            if self.operation is not None and self.operation.statistics:
+                kwargs["diagnostics_enabled"] = True
+            snapshot = await self.device.async_update(**kwargs)
         except HeatPumpError as err:
+            if self.monitoring is not None:
+                await self.monitoring.async_failure()
+            if self.operation is not None:
+                await self.operation.async_snapshot(None)
             raise UpdateFailed(str(err)) from err
         finally:
             self.force_optional = False
         if not snapshot.layout_valid:
+            if self.monitoring is not None:
+                await self.monitoring.async_failure()
             raise UpdateFailed("The returned mode/profile/power registers do not match the documented layout")
+        if self.monitoring is not None:
+            await self.monitoring.async_snapshot(snapshot)
+        if self.operation is not None:
+            await self.operation.async_snapshot(snapshot)
         return snapshot
 
     async def async_write(self, key: str, value: Any) -> None:

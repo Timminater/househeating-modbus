@@ -45,6 +45,22 @@
   "options": {
     "step": {
       "init": {
+        "title": "HouseHeating opties",
+        "menu_options": {
+          "control": "Uitlezen en bediening",
+          "monitoring": "Energiemonitoring (alleen lezen)",
+          "operation": "Compressorstatistieken",
+          "weather_curve": "Stooklijn en zonnestroomcorrectie"
+        }
+      },
+      "confirm_control": {
+        "title": "Controleer de echte meetwaarden",
+        "description": "Vergelijk onderstaande waarden met het bedieningsscherm. Bevestigen stuurt nog GEEN opdracht; daarna worden de bedieningselementen beschikbaar. Dit is geen hardware- of veiligheidskeuring.\n\n{readings}",
+        "data": {
+          "confirm_values": "Ik heb ALLE getoonde temperaturen en setpoints met het fysieke bedieningsscherm vergeleken en gecontroleerd dat de installatie klaar is voor deze opdrachten"
+        }
+      },
+      "control": {
         "title": "Uitlezen en bediening",
         "description": "Temperatuurschaling verschilt per firmware en is tegenstrijdig beschreven in de handleiding. Controleer metingen en setpoints apart tegen het fysieke scherm. Raw 350 bij 35 °C: deler 10; raw 35 bij 35 °C: deler 1. Warmwater: standaard maximaal 65 °C, instelbaar tot 75 °C na controle van de installatie. Verwarming maximaal 60 °C volgens register 0x0301.",
         "data": {
@@ -63,11 +79,62 @@
           "allow_control": "Modbus-bediening na bevestiging inschakelen"
         }
       },
-      "confirm_control": {
-        "title": "Controleer de echte meetwaarden",
-        "description": "Vergelijk onderstaande waarden met het bedieningsscherm. Bevestigen stuurt nog GEEN opdracht; daarna worden de bedieningselementen beschikbaar. Dit is geen hardware- of veiligheidskeuring.\n\n{readings}",
+      "monitoring": {
+        "title": "Energiemonitoring en geschat rendement",
+        "description": "Deze instellingen veranderen geen warmtepompinstellingen of bedieningsvrijgave. Thermische waarden zijn schattingen. Bevestig eerst temperatuur- en debietschaal. Waterbenadering: dichtheid 1 kg/L en soortelijke warmte 4,18 kJ/kg/K. Gebruik voor glycol gedocumenteerde fabrikantgegevens inclusief referentietemperatuur. De externe meter moet de bedoelde warmtepompverbruikers omvatten. Laat de optionele kWh-teller leeg om vermogen te integreren.",
         "data": {
-          "confirm_values": "Ik heb ALLE getoonde temperaturen en setpoints met het fysieke bedieningsscherm vergeleken en gecontroleerd dat de installatie klaar is voor deze opdrachten"
+          "enabled": "Energiemonitoring inschakelen",
+          "thermal_confirmed": "Ik heb de temperatuur- en debietschaal tegen de installatie gecontroleerd",
+          "source": "Elektrische meetbron",
+          "external_power": "Externe vermogenssensor (W/kW)",
+          "external_energy": "Externe cumulatieve energieteller (Wh/kWh, optioneel)",
+          "max_age": "Maximale meetleeftijd (seconden)",
+          "max_skew": "Maximaal tijdsverschil hydraulische metingen (seconden)",
+          "flow_factor": "Debietfactor, alleen voor berekeningen",
+          "delta_correction": "Correctie temperatuurverschil (K)",
+          "density": "Vloeistofdichtheid (kg/L)",
+          "specific_heat": "Soortelijke warmte (kJ/kg/K)",
+          "fluid_reference": "Vloeistofgegevens en referentietemperatuur",
+          "min_power": "Minimum elektrisch vermogen voor momentane COP (kW)",
+          "energy_resolution": "Resolutie externe energieteller (kWh)",
+          "max_power": "Plausibiliteitsplafond elektrisch vermogen (kW)",
+          "thermal_source": "Thermische bron",
+          "external_heat_power": "Thermisch vermogen van externe warmtemeter (W/kW, met teken)"
+        }
+      },
+      "operation": {
+        "title": "Compressorstatistieken",
+        "description": "Telt alleen waargenomen starts en volledig waargenomen draai-intervallen. Dit zijn geen fabriekstotalen. Er worden geen warmtepompinstellingen gewijzigd.",
+        "data": {
+          "operation_statistics": "Waargenomen compressorstatistieken bijhouden"
+        }
+      },
+      "weather_curve": {
+        "title": "Optionele eigen stooklijn",
+        "description": "Standaard alleen advies. Automatische bediening vereist bestaande bedieningsvrijgave en deze expliciete bevestiging. Schakel de ingebouwde curve van de gekozen functie zelf uit. Lage acculading krijgt voorrang boven zonnestroom. Een fout of handmatige afwijking stopt de regeling; opnieuw bevestigen geeft haar opnieuw vrij.",
+        "data": {
+          "enabled": "Stooklijn inschakelen",
+          "automatic": "Automatisch het gekozen setpoint bedienen",
+          "confirm_control": "Ik bevestig automatische bediening via de bestaande vrijgave en beveiligingen",
+          "target": "Te regelen functie",
+          "outdoor_entity": "Buitentemperatuursensor (leeg = warmtepomp)",
+          "outdoor_min": "Laagste buitentemperatuur (°C)",
+          "outdoor_max": "Hoogste buitentemperatuur (°C)",
+          "water_min": "Laagste watertemperatuur (°C)",
+          "water_max": "Hoogste watertemperatuur (°C)",
+          "inertia_minutes": "Afvlakking van de stooklijn (minuten)",
+          "cooldown_seconds": "Minimale tijd tussen opdrachten (seconden)",
+          "step_degrees": "Minimale setpointwijziging (°C)",
+          "max_age": "Maximale meetleeftijd (seconden)",
+          "pv_entity": "Sensor voor beschikbaar zonnestroomvermogen (optioneel)",
+          "pv_threshold_kw": "Zonnestroomdrempel (kW)",
+          "pv_hysteresis_kw": "Terugschakeldrempel onder zonnestroomdrempel (kW)",
+          "pv_offset": "Temperatuurcorrectie bij zonnestroom (K)",
+          "battery_entity": "Acculadingssensor (optioneel)",
+          "battery_min_soc": "Drempel voor lage acculading (%)",
+          "battery_hysteresis": "Herstelmarge acculading (procentpunten)",
+          "battery_low_offset": "Temperatuurcorrectie bij lage acculading (K, verwarming)",
+          "hold_seconds": "Vereiste stabiliteit van een correctie (seconden)"
         }
       }
     },
@@ -76,7 +143,9 @@
       "invalid_connection": "Verbindingsgegevens zijn onjuist of de registers passen niet bij dit protocol.",
       "invalid_options": "Controleer de bereiken van de ingestelde opties.",
       "commissioning_failed": "Vrijgave mislukt. Controleer de temperatuurdelers en of firmware, protocol en alle vier setpoints geldig uitleesbaar zijn. Bewaar eerst met bediening uit en bekijk de diagnostiek.",
-      "confirmation_required": "Bevestig eerst de vergelijking met het fysieke bedieningsscherm."
+      "confirmation_required": "Bevestig eerst de vergelijking met het fysieke bedieningsscherm.",
+      "invalid_monitoring": "Controleer de bereiken, bron-eenheden en sensorkeuze. Externe metingen vereisen W/kW (vermogen) en Wh/kWh (energie). Eigen berekende sensoren zijn geen geldige bron.",
+      "invalid_curve": "Controleer bronnen, temperatuurbereiken en bedieningsvrijgave. Bevestig automatische bediening opnieuw."
     }
   },
   "selector": {
@@ -91,6 +160,26 @@
       "options": {
         "10": "raw / 10 (350 = 35,0 °C)",
         "1": "raw / 1 (35 = 35 °C)"
+      }
+    },
+    "monitoring_source": {
+      "options": {
+        "modbus": "Modbus-vermogen integreren",
+        "external": "Externe warmtepompmeter"
+      }
+    },
+    "thermal_source": {
+      "options": {
+        "hydraulic": "Berekend uit debiet en temperaturen",
+        "external": "Externe warmtemeter"
+      }
+    },
+    "curve_target": {
+      "options": {
+        "heating_setpoint": "Verwarming",
+        "floor_setpoint": "Vloerverwarming",
+        "dhw_setpoint": "Warmwater",
+        "cooling_setpoint": "Koeling"
       }
     }
   },
@@ -405,6 +494,272 @@
       },
       "temperature_control_mode": {
         "name": "Regelmodus watertemperatuur"
+      },
+      "selected_electrical_power": {
+        "name": "Elektrisch vermogen monitoring"
+      },
+      "electrical_energy_total": {
+        "name": "Elektrische energie monitoring"
+      },
+      "water_flow_calibrated": {
+        "name": "Berekend gecorrigeerd waterdebiet"
+      },
+      "water_delta_temperature": {
+        "name": "Berekend temperatuurverschil water"
+      },
+      "thermal_power_estimated": {
+        "name": "Thermisch vermogen (bron/berekend)"
+      },
+      "thermal_energy_delivered": {
+        "name": "Geschatte afgegeven warmte-energie"
+      },
+      "thermal_energy_extracted": {
+        "name": "Geschatte onttrokken warmte-energie"
+      },
+      "thermal_energy_net": {
+        "name": "Geschatte netto warmte-energie"
+      },
+      "cop_instant": {
+        "name": "Geschatte momentane COP"
+      },
+      "eer_instant": {
+        "name": "Geschat momentaan koelrendement EER"
+      },
+      "monitoring_status": {
+        "name": "Kwaliteit energiemonitoring",
+        "state": {
+          "valid": "Geldig",
+          "awaiting_confirmation": "Wacht op schaalbevestiging",
+          "partial": "Gedeeltelijke metingen",
+          "unavailable": "Geen verse metingen",
+          "storage_error": "Opslagfout"
+        }
+      },
+      "electrical_energy_day": {
+        "name": "Elektrische energie vandaag"
+      },
+      "thermal_energy_net_day": {
+        "name": "Geschatte netto warmte-energie vandaag"
+      },
+      "heating_energy_paired_day": {
+        "name": "Geschatte gekoppelde verwarmingsenergie vandaag"
+      },
+      "heating_electricity_paired_day": {
+        "name": "Gekoppelde elektriciteit verwarming vandaag"
+      },
+      "cooling_energy_paired_day": {
+        "name": "Geschatte gekoppelde koelenergie vandaag"
+      },
+      "cooling_electricity_paired_day": {
+        "name": "Gekoppelde elektriciteit koeling vandaag"
+      },
+      "cop_day": {
+        "name": "Geschat verwarmingsrendement COP vandaag"
+      },
+      "cop_coverage_day": {
+        "name": "Meetdekking verwarmingsrendement vandaag"
+      },
+      "eer_day": {
+        "name": "Geschat koelrendement EER vandaag"
+      },
+      "eer_coverage_day": {
+        "name": "Meetdekking koelrendement vandaag"
+      },
+      "electrical_energy_month": {
+        "name": "Elektrische energie deze maand"
+      },
+      "thermal_energy_net_month": {
+        "name": "Geschatte netto warmte-energie deze maand"
+      },
+      "heating_energy_paired_month": {
+        "name": "Geschatte gekoppelde verwarmingsenergie deze maand"
+      },
+      "heating_electricity_paired_month": {
+        "name": "Gekoppelde elektriciteit verwarming deze maand"
+      },
+      "cooling_energy_paired_month": {
+        "name": "Geschatte gekoppelde koelenergie deze maand"
+      },
+      "cooling_electricity_paired_month": {
+        "name": "Gekoppelde elektriciteit koeling deze maand"
+      },
+      "cop_month": {
+        "name": "Geschat verwarmingsrendement COP deze maand"
+      },
+      "cop_coverage_month": {
+        "name": "Meetdekking verwarmingsrendement deze maand"
+      },
+      "eer_month": {
+        "name": "Geschat koelrendement EER deze maand"
+      },
+      "eer_coverage_month": {
+        "name": "Meetdekking koelrendement deze maand"
+      },
+      "heating_energy_paired_yesterday": {
+        "name": "Gepaarde netto verwarmingsenergie gisteren"
+      },
+      "heating_electricity_paired_yesterday": {
+        "name": "Gepaarde elektriciteit voor verwarming gisteren"
+      },
+      "cooling_energy_paired_yesterday": {
+        "name": "Gepaarde netto koelenergie gisteren"
+      },
+      "cooling_electricity_paired_yesterday": {
+        "name": "Gepaarde elektriciteit voor koeling gisteren"
+      },
+      "cop_yesterday": {
+        "name": "COP gisteren"
+      },
+      "eer_yesterday": {
+        "name": "EER gisteren"
+      },
+      "cop_coverage_yesterday": {
+        "name": "Verwarmingsmeetdekking gisteren"
+      },
+      "eer_coverage_yesterday": {
+        "name": "Koelmeetdekking gisteren"
+      },
+      "heating_energy_paired_7d": {
+        "name": "Gepaarde netto verwarmingsenergie 7 kalenderdagen"
+      },
+      "heating_electricity_paired_7d": {
+        "name": "Gepaarde elektriciteit voor verwarming 7 kalenderdagen"
+      },
+      "cooling_energy_paired_7d": {
+        "name": "Gepaarde netto koelenergie 7 kalenderdagen"
+      },
+      "cooling_electricity_paired_7d": {
+        "name": "Gepaarde elektriciteit voor koeling 7 kalenderdagen"
+      },
+      "cop_7d": {
+        "name": "COP 7 kalenderdagen"
+      },
+      "eer_7d": {
+        "name": "EER 7 kalenderdagen"
+      },
+      "cop_coverage_7d": {
+        "name": "Verwarmingsmeetdekking 7 kalenderdagen"
+      },
+      "eer_coverage_7d": {
+        "name": "Koelmeetdekking 7 kalenderdagen"
+      },
+      "heating_energy_paired_30d": {
+        "name": "Gepaarde netto verwarmingsenergie 30 kalenderdagen"
+      },
+      "heating_electricity_paired_30d": {
+        "name": "Gepaarde elektriciteit voor verwarming 30 kalenderdagen"
+      },
+      "cooling_energy_paired_30d": {
+        "name": "Gepaarde netto koelenergie 30 kalenderdagen"
+      },
+      "cooling_electricity_paired_30d": {
+        "name": "Gepaarde elektriciteit voor koeling 30 kalenderdagen"
+      },
+      "cop_30d": {
+        "name": "COP 30 kalenderdagen"
+      },
+      "eer_30d": {
+        "name": "EER 30 kalenderdagen"
+      },
+      "cop_coverage_30d": {
+        "name": "Verwarmingsmeetdekking 30 kalenderdagen"
+      },
+      "eer_coverage_30d": {
+        "name": "Koelmeetdekking 30 kalenderdagen"
+      },
+      "heating_energy_paired_365d": {
+        "name": "Gepaarde netto verwarmingsenergie 365 kalenderdagen"
+      },
+      "heating_electricity_paired_365d": {
+        "name": "Gepaarde elektriciteit voor verwarming 365 kalenderdagen"
+      },
+      "cooling_energy_paired_365d": {
+        "name": "Gepaarde netto koelenergie 365 kalenderdagen"
+      },
+      "cooling_electricity_paired_365d": {
+        "name": "Gepaarde elektriciteit voor koeling 365 kalenderdagen"
+      },
+      "cop_365d": {
+        "name": "COP 365 kalenderdagen"
+      },
+      "eer_365d": {
+        "name": "EER 365 kalenderdagen"
+      },
+      "cop_coverage_365d": {
+        "name": "Verwarmingsmeetdekking 365 kalenderdagen"
+      },
+      "eer_coverage_365d": {
+        "name": "Koelmeetdekking 365 kalenderdagen"
+      },
+      "heating_energy_paired_overall": {
+        "name": "Gepaarde netto verwarmingsenergie sinds rendementsmeting"
+      },
+      "heating_electricity_paired_overall": {
+        "name": "Gepaarde elektriciteit voor verwarming sinds rendementsmeting"
+      },
+      "cooling_energy_paired_overall": {
+        "name": "Gepaarde netto koelenergie sinds rendementsmeting"
+      },
+      "cooling_electricity_paired_overall": {
+        "name": "Gepaarde elektriciteit voor koeling sinds rendementsmeting"
+      },
+      "cop_overall": {
+        "name": "COP sinds rendementsmeting"
+      },
+      "eer_overall": {
+        "name": "EER sinds rendementsmeting"
+      },
+      "cop_coverage_overall": {
+        "name": "Verwarmingsmeetdekking sinds rendementsmeting"
+      },
+      "eer_coverage_overall": {
+        "name": "Koelmeetdekking sinds rendementsmeting"
+      },
+      "compressor_starts_observed": {
+        "name": "Waargenomen compressorstarts"
+      },
+      "compressor_runtime_observed": {
+        "name": "Waargenomen compressordraaiuren"
+      },
+      "compressor_starts_day": {
+        "name": "Waargenomen compressorstarts vandaag"
+      },
+      "compressor_runtime_day": {
+        "name": "Waargenomen compressordraaiuren vandaag"
+      },
+      "compressor_cycle_average": {
+        "name": "Gemiddelde volledig waargenomen compressorcyclus"
+      },
+      "curve_base_target": {
+        "name": "Stooklijn zonder correctie"
+      },
+      "curve_offset": {
+        "name": "Actieve stooklijncorrectie"
+      },
+      "curve_advised_target": {
+        "name": "Geadviseerde watertemperatuur"
+      },
+      "curve_status": {
+        "name": "Stooklijnstatus",
+        "state": {
+          "disabled": "Uitgeschakeld",
+          "advisory": "Alleen advies",
+          "source_unavailable": "Bron ontbreekt of is verouderd",
+          "control_locked": "Bediening vergrendeld",
+          "inactive_mode": "Gekozen functie is niet actief",
+          "native_curve_active": "Ingebouwde curve actief of niet actueel",
+          "cooldown": "Wachttijd tussen opdrachten",
+          "unchanged": "Geen wijziging nodig",
+          "controlling": "Automatische regeling actief",
+          "manual_override": "Gestopt na handmatige afwijking",
+          "write_error": "Gestopt na controle-, opslag- of opdrachtfout"
+        }
+      },
+      "thermal_power_hydraulic_estimated": {
+        "name": "Geschat hydraulisch warmtevermogen"
+      },
+      "thermal_power_external_reported": {
+        "name": "Gerapporteerd vermogen externe warmtemeter"
       }
     },
     "number": {
@@ -554,6 +909,144 @@
       },
       "control_enabled": {
         "name": "Modbus-bediening vrijgegeven"
+      },
+      "compressor_active": {
+        "name": "Compressorrelais actief"
+      },
+      "fan_active": {
+        "name": "Ventilatorrelais actief"
+      },
+      "circulation_pump_active": {
+        "name": "Ingebouwde waterpomp actief"
+      },
+      "dhw_heater_active": {
+        "name": "Elektrische boilerverwarming actief"
+      },
+      "space_heater_active": {
+        "name": "Elektrische ruimteverwarming actief"
+      },
+      "floor_heater_active": {
+        "name": "Elektrische vloerverwarming actief"
+      },
+      "crankcase_heater_active": {
+        "name": "Krukasverwarming actief"
+      },
+      "chassis_heater_active": {
+        "name": "Chassisverwarming actief"
+      },
+      "return_pump_valve_active": {
+        "name": "Retourwaterklep of pomp actief"
+      },
+      "space_three_way_valve_active": {
+        "name": "Driewegklep verwarming/koeling actief"
+      },
+      "floor_three_way_valve_active": {
+        "name": "Driewegklep vloerverwarming actief"
+      },
+      "four_way_valve_active": {
+        "name": "Vierwegklep actief"
+      },
+      "auxiliary_pump_active": {
+        "name": "Secundaire verwarmingspomp actief"
+      },
+      "fault_0002_wrong_phase": {
+        "name": "Verkeerde fase"
+      },
+      "fault_0002_missing_phase": {
+        "name": "Ontbrekende fase"
+      },
+      "fault_0002_water_flow_fault": {
+        "name": "Waterdebietstoring"
+      },
+      "fault_0002_communication_fault": {
+        "name": "Communicatiestoring"
+      },
+      "fault_0002_emergency_fault": {
+        "name": "Noodstoring"
+      },
+      "fault_0002_use_time_expired": {
+        "name": "Gebruikstijd verstreken"
+      },
+      "fault_0002_dhw_sensor_fault": {
+        "name": "Boilersensorstoring"
+      },
+      "fault_0002_inlet_sensor_fault": {
+        "name": "Waterinlaatsensorstoring"
+      },
+      "fault_0002_indoor_sensor_fault": {
+        "name": "Binnensensorstoring"
+      },
+      "fault_0002_outdoor_sensor_fault": {
+        "name": "Buitensensorstoring"
+      },
+      "fault_0002_dhw_return_sensor_fault": {
+        "name": "Boilerretoursensorstoring"
+      },
+      "fault_0002_cooling_outlet_too_low": {
+        "name": "Koelwateruitlaat te koud"
+      },
+      "fault_0002_water_level_fault": {
+        "name": "Waterniveaustoring"
+      },
+      "fault_0002_outlet_sensor_fault": {
+        "name": "Wateruitlaatsensorstoring"
+      },
+      "fault_0002_heating_outlet_too_high": {
+        "name": "Verwarmingswateruitlaat te warm"
+      },
+      "fault_0002_water_temperature_difference_too_high": {
+        "name": "Watertemperatuurverschil te groot"
+      },
+      "fault_0003_outdoor_temperature_too_low": {
+        "name": "Buitentemperatuur te laag"
+      },
+      "fault_0003_indoor_humidity_sensor_fault": {
+        "name": "Binnenvochtigheidssensorstoring"
+      },
+      "fault_0003_phase_dip_switch_fault": {
+        "name": "Fase-instellingsstoring"
+      },
+      "fault_0003_pump_1_fault": {
+        "name": "Pomp 1 storing"
+      },
+      "fault_0003_pump_2_fault": {
+        "name": "Pomp 2 storing"
+      },
+      "fault_0003_low_water_flow": {
+        "name": "Waterdebiet te laag"
+      },
+      "fault_0004_phase_sequence_disconnected": {
+        "name": "Fasevolgorde onderbroken"
+      },
+      "fault_0004_expansion_board_communication_fault": {
+        "name": "Uitbreidingsbord communicatiestoring"
+      },
+      "fault_0004_plate_sensor_fault": {
+        "name": "Platenwisselaarsensorstoring"
+      },
+      "fault_0004_fan_1_communication_fault": {
+        "name": "Ventilator 1 communicatiestoring"
+      },
+      "fault_0004_fan_2_communication_fault": {
+        "name": "Ventilator 2 communicatiestoring"
+      },
+      "fault_0004_cascade_model_mismatch": {
+        "name": "Cascademodellen komen niet overeen"
+      },
+      "fault_0004_solar_sensor_fault": {
+        "name": "Zonnecollectorsensorstoring"
+      },
+      "fault_0004_auxiliary_heat_sensor_fault": {
+        "name": "Hulpverwarmingssensorstoring"
+      },
+      "fault_0004_buffer_sensor_fault": {
+        "name": "Buffersensorstoring"
+      },
+      "fault_0004_total_outlet_sensor_fault": {
+        "name": "Totale wateruitlaatsensorstoring"
+      },
+      "fault_0004_zone_1_sensor_fault": {
+        "name": "Zone 1 sensorstoring"
       }
     },
     "button": {

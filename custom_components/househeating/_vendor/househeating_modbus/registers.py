@@ -103,6 +103,8 @@ REGISTERS: tuple[Register, ...] = (
              page=167, unit="kW", device_class="power", factor=0.01,
              minimum=0, maximum=30, group="extended"),
     # No total_increasing classification: reset, overflow and accuracy unverified.
+    # Monitoring deliberately uses power integration or an explicit external meter,
+    # never this unverified counter as its primary energy source.
     Register(key="reported_energy", address=0x005D, name="Reported electrical energy",
              page=167, unit="kWh", device_class="energy", kind="counter", group="extended"),
     temp("solar_temperature", 0x0072, "Solar-water temperature", page=168, group="extended", fault=(4, 6)),

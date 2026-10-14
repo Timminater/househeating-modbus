@@ -115,11 +115,20 @@ class Identity:
 
 
 @dataclass(frozen=True)
+class ReadWindow:
+    """Actual successful read interval; cached values retain their original time."""
+    start: float
+    end: float
+    monotonic_end: float
+
+
+@dataclass(frozen=True)
 class Snapshot:
     raw: Mapping[int, int] = field(default_factory=dict)
     errors: Mapping[str, str] = field(default_factory=dict)
     timestamp: float = 0.0
     optional_timestamp: float = 0.0
+    samples: Mapping[int, ReadWindow] = field(default_factory=dict)
 
     @property
     def identity(self) -> Identity | None:

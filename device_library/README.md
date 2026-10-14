@@ -1,4 +1,4 @@
-# househeating-modbus 0.2.0
+# househeating-modbus 0.4.0
 
 Backend-neutral protocol library for the HouseHeating HH-C3-12 / related SolarEast R290 family. This is an experimental, document-based implementation, not a manufacturer-certified driver. Physical-device validation is pending.
 
@@ -42,7 +42,7 @@ After an operator checks the measurements, setpoints, installation, and identity
 
 Read-only state, fault words, temperatures, compressor frequency, selected electrical measurements, optional extended register groups and version registers. Controls are on/off, exact operating mode, standard/powerful/silent profile, four temperature setpoints and native curves for protocol >= 130.
 
-No service commands, reset, forced compressor operation, forced defrost, raw-write API, virtual sensor injection, or external optimization loop. Fan speed and flow with unresolved units are exposed as raw values. The energy counter is not declared a validated monotonic total; no COP is calculated.
+No service commands, reset, forced compressor operation, forced defrost, raw-write API, virtual sensor injection, or external optimization loop. The device energy counter is not declared a validated monotonic total. Optional read-only telemetry calculates thermal estimates and paired energy ratios after explicit hydraulic scale confirmation; see [ENERGIEMONITORING.md](../ENERGIEMONITORING.md). Water flow is documented in L/min, with firmware scaling still requiring physical confirmation.
 
 ## Tests
 

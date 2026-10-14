@@ -1,0 +1,10 @@
+generate_dashboard:
+  name: Dashboard samenstellen
+  description: Geeft dashboardconfiguratie terug met de actuele entiteitsnamen. Wijzigt geen bestaand dashboard.
+  fields:
+    entry_id:
+      name: Integratie
+      required: true
+      selector:
+        config_entry:
+          integration: househeating

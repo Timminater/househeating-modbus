@@ -17,4 +17,7 @@ DEFAULT_OPTIONS = {
     "max_dhw": 65,
     "allow_control": False,
     "authorized_identity": [],
+    "monitoring": {"enabled": False},
+    "operation_statistics": False,
+    "weather_curve": {"enabled": False},
 }

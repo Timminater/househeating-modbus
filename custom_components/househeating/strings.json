@@ -45,6 +45,22 @@
   "options": {
     "step": {
       "init": {
+        "title": "HouseHeating options",
+        "menu_options": {
+          "control": "Polling and control",
+          "monitoring": "Energy monitoring (read only)",
+          "operation": "Observed compressor statistics",
+          "weather_curve": "Weather compensation and PV correction"
+        }
+      },
+      "confirm_control": {
+        "title": "Check the actual readings",
+        "description": "Compare the following values with the physical controller. Confirmation does NOT send any command; it enables the controls afterwards. This is not a hardware or safety certification.\n\n{readings}",
+        "data": {
+          "confirm_values": "I compared every displayed temperature and setpoint with the physical controller and verified the installation is ready for these commands"
+        }
+      },
+      "control": {
         "title": "Polling and control",
         "description": "Temperature scaling varies with firmware and is inconsistent in the manual. Verify measurements and setpoints separately against the physical controller. Raw 350 for 35 °C: divisor 10; raw 35 for 35 °C: divisor 1. Hot water defaults to a 65 °C cap, configurable up to 75 °C after checking the installation. Heating is limited to 60 °C by register 0x0301.",
         "data": {
@@ -63,11 +79,62 @@
           "allow_control": "Enable Modbus control after confirmation"
         }
       },
-      "confirm_control": {
-        "title": "Check the actual readings",
-        "description": "Compare the following values with the physical controller. Confirmation does NOT send any command; it enables the controls afterwards. This is not a hardware or safety certification.\n\n{readings}",
+      "monitoring": {
+        "title": "Energy monitoring and estimated efficiency",
+        "description": "These settings do not change heat-pump settings or control authorization. Thermal values are estimates. Verify temperature and flow scaling first. Water approximation: density 1 kg/L and heat capacity 4.18 kJ/kg/K. For glycol, use documented manufacturer data including reference temperature. The external meter must cover the intended heat-pump consumers. Leave the optional kWh counter empty to integrate power.",
         "data": {
-          "confirm_values": "I compared every displayed temperature and setpoint with the physical controller and verified the installation is ready for these commands"
+          "enabled": "Enable energy monitoring",
+          "thermal_confirmed": "I verified temperature and flow scaling against the installation",
+          "source": "Electrical measurement source",
+          "external_power": "External power sensor (W/kW)",
+          "external_energy": "External cumulative energy counter (Wh/kWh, optional)",
+          "max_age": "Maximum measurement age (seconds)",
+          "max_skew": "Maximum hydraulic measurement skew (seconds)",
+          "flow_factor": "Flow multiplier, calculations only",
+          "delta_correction": "Temperature difference correction (K)",
+          "density": "Fluid density (kg/L)",
+          "specific_heat": "Specific heat capacity (kJ/kg/K)",
+          "fluid_reference": "Fluid data and reference temperature",
+          "min_power": "Minimum electrical power for instantaneous COP (kW)",
+          "energy_resolution": "External energy counter resolution (kWh)",
+          "max_power": "Electrical power plausibility ceiling (kW)",
+          "thermal_source": "Thermal source",
+          "external_heat_power": "External signed thermal power (W/kW)"
+        }
+      },
+      "operation": {
+        "title": "Observed compressor statistics",
+        "description": "Counts observed starts and fully observed running intervals only. These are not lifetime factory counters. No device settings are changed.",
+        "data": {
+          "operation_statistics": "Enable observed compressor statistics"
+        }
+      },
+      "weather_curve": {
+        "title": "Optional weather compensation",
+        "description": "Advisory by default. Automatic control requires existing commissioning and explicit confirmation here. Disable the selected native curve yourself. Low battery reserve takes precedence over PV boost. Errors or manual overrides stop control; confirm again to rearm.",
+        "data": {
+          "enabled": "Enabled",
+          "automatic": "Automatic",
+          "confirm_control": "Confirm control",
+          "target": "Target",
+          "outdoor_entity": "Outdoor entity",
+          "outdoor_min": "Outdoor min",
+          "outdoor_max": "Outdoor max",
+          "water_min": "Water min",
+          "water_max": "Water max",
+          "inertia_minutes": "Inertia minutes",
+          "cooldown_seconds": "Cooldown seconds",
+          "step_degrees": "Step degrees",
+          "max_age": "Max age",
+          "pv_entity": "Pv entity",
+          "pv_threshold_kw": "Pv threshold kw",
+          "pv_hysteresis_kw": "Pv hysteresis kw",
+          "pv_offset": "Pv offset",
+          "battery_entity": "Battery entity",
+          "battery_min_soc": "Battery min soc",
+          "battery_hysteresis": "Battery hysteresis",
+          "battery_low_offset": "Battery low offset",
+          "hold_seconds": "Hold seconds"
         }
       }
     },
@@ -76,7 +143,9 @@
       "invalid_connection": "Invalid connection details or an incompatible register layout.",
       "invalid_options": "Check the configuration value ranges.",
       "commissioning_failed": "Commissioning failed. Check temperature divisors, readable firmware/protocol and all four setpoints. Save with control disabled first and review diagnostics.",
-      "confirmation_required": "Confirm the comparison with the physical controller first."
+      "confirmation_required": "Confirm the comparison with the physical controller first.",
+      "invalid_monitoring": "Check ranges, source units and sensor selection. External sources require W/kW (power) and Wh/kWh (energy). Own calculated sensors cannot be sources.",
+      "invalid_curve": "Check sources, temperature limits and commissioning. Explicitly confirm automatic control again."
     }
   },
   "selector": {
@@ -91,6 +160,26 @@
       "options": {
         "10": "raw / 10 (350 = 35.0 °C)",
         "1": "raw / 1 (35 = 35 °C)"
+      }
+    },
+    "monitoring_source": {
+      "options": {
+        "modbus": "Integrate Modbus power",
+        "external": "External heat-pump meter"
+      }
+    },
+    "thermal_source": {
+      "options": {
+        "hydraulic": "Calculated from flow and temperatures",
+        "external": "External heat meter"
+      }
+    },
+    "curve_target": {
+      "options": {
+        "heating_setpoint": "Heating",
+        "floor_setpoint": "Floor heating",
+        "dhw_setpoint": "Domestic hot water",
+        "cooling_setpoint": "Cooling"
       }
     }
   },
@@ -405,6 +494,272 @@
       },
       "temperature_control_mode": {
         "name": "Water temperature control mode"
+      },
+      "selected_electrical_power": {
+        "name": "Monitoring electrical power"
+      },
+      "electrical_energy_total": {
+        "name": "Monitoring electrical energy"
+      },
+      "water_flow_calibrated": {
+        "name": "Calculated corrected water flow"
+      },
+      "water_delta_temperature": {
+        "name": "Calculated water temperature difference"
+      },
+      "thermal_power_estimated": {
+        "name": "Thermal power (source/calculated)"
+      },
+      "thermal_energy_delivered": {
+        "name": "Estimated delivered thermal energy"
+      },
+      "thermal_energy_extracted": {
+        "name": "Estimated extracted thermal energy"
+      },
+      "thermal_energy_net": {
+        "name": "Estimated net thermal energy"
+      },
+      "cop_instant": {
+        "name": "Estimated instantaneous COP"
+      },
+      "eer_instant": {
+        "name": "Estimated instantaneous cooling EER"
+      },
+      "monitoring_status": {
+        "name": "Energy monitoring quality",
+        "state": {
+          "valid": "Valid",
+          "awaiting_confirmation": "Awaiting scaling confirmation",
+          "partial": "Partial measurements",
+          "unavailable": "No fresh measurements",
+          "storage_error": "Storage error"
+        }
+      },
+      "electrical_energy_day": {
+        "name": "Electrical energy today"
+      },
+      "thermal_energy_net_day": {
+        "name": "Estimated net thermal energy today"
+      },
+      "heating_energy_paired_day": {
+        "name": "Estimated paired heating energy today"
+      },
+      "heating_electricity_paired_day": {
+        "name": "Paired heating electricity today"
+      },
+      "cooling_energy_paired_day": {
+        "name": "Estimated paired cooling energy today"
+      },
+      "cooling_electricity_paired_day": {
+        "name": "Paired cooling electricity today"
+      },
+      "cop_day": {
+        "name": "Estimated heating COP today"
+      },
+      "cop_coverage_day": {
+        "name": "Heating ratio measurement coverage today"
+      },
+      "eer_day": {
+        "name": "Estimated cooling EER today"
+      },
+      "eer_coverage_day": {
+        "name": "Cooling ratio measurement coverage today"
+      },
+      "electrical_energy_month": {
+        "name": "Electrical energy this month"
+      },
+      "thermal_energy_net_month": {
+        "name": "Estimated net thermal energy this month"
+      },
+      "heating_energy_paired_month": {
+        "name": "Estimated paired heating energy this month"
+      },
+      "heating_electricity_paired_month": {
+        "name": "Paired heating electricity this month"
+      },
+      "cooling_energy_paired_month": {
+        "name": "Estimated paired cooling energy this month"
+      },
+      "cooling_electricity_paired_month": {
+        "name": "Paired cooling electricity this month"
+      },
+      "cop_month": {
+        "name": "Estimated heating COP this month"
+      },
+      "cop_coverage_month": {
+        "name": "Heating ratio measurement coverage this month"
+      },
+      "eer_month": {
+        "name": "Estimated cooling EER this month"
+      },
+      "eer_coverage_month": {
+        "name": "Cooling ratio measurement coverage this month"
+      },
+      "heating_energy_paired_yesterday": {
+        "name": "Heating energy paired yesterday"
+      },
+      "heating_electricity_paired_yesterday": {
+        "name": "Heating electricity paired yesterday"
+      },
+      "cooling_energy_paired_yesterday": {
+        "name": "Cooling energy paired yesterday"
+      },
+      "cooling_electricity_paired_yesterday": {
+        "name": "Cooling electricity paired yesterday"
+      },
+      "cop_yesterday": {
+        "name": "Cop yesterday"
+      },
+      "eer_yesterday": {
+        "name": "Eer yesterday"
+      },
+      "cop_coverage_yesterday": {
+        "name": "Cop coverage yesterday"
+      },
+      "eer_coverage_yesterday": {
+        "name": "Eer coverage yesterday"
+      },
+      "heating_energy_paired_7d": {
+        "name": "Heating energy paired 7d"
+      },
+      "heating_electricity_paired_7d": {
+        "name": "Heating electricity paired 7d"
+      },
+      "cooling_energy_paired_7d": {
+        "name": "Cooling energy paired 7d"
+      },
+      "cooling_electricity_paired_7d": {
+        "name": "Cooling electricity paired 7d"
+      },
+      "cop_7d": {
+        "name": "Cop 7d"
+      },
+      "eer_7d": {
+        "name": "Eer 7d"
+      },
+      "cop_coverage_7d": {
+        "name": "Cop coverage 7d"
+      },
+      "eer_coverage_7d": {
+        "name": "Eer coverage 7d"
+      },
+      "heating_energy_paired_30d": {
+        "name": "Heating energy paired 30d"
+      },
+      "heating_electricity_paired_30d": {
+        "name": "Heating electricity paired 30d"
+      },
+      "cooling_energy_paired_30d": {
+        "name": "Cooling energy paired 30d"
+      },
+      "cooling_electricity_paired_30d": {
+        "name": "Cooling electricity paired 30d"
+      },
+      "cop_30d": {
+        "name": "Cop 30d"
+      },
+      "eer_30d": {
+        "name": "Eer 30d"
+      },
+      "cop_coverage_30d": {
+        "name": "Cop coverage 30d"
+      },
+      "eer_coverage_30d": {
+        "name": "Eer coverage 30d"
+      },
+      "heating_energy_paired_365d": {
+        "name": "Heating energy paired 365d"
+      },
+      "heating_electricity_paired_365d": {
+        "name": "Heating electricity paired 365d"
+      },
+      "cooling_energy_paired_365d": {
+        "name": "Cooling energy paired 365d"
+      },
+      "cooling_electricity_paired_365d": {
+        "name": "Cooling electricity paired 365d"
+      },
+      "cop_365d": {
+        "name": "Cop 365d"
+      },
+      "eer_365d": {
+        "name": "Eer 365d"
+      },
+      "cop_coverage_365d": {
+        "name": "Cop coverage 365d"
+      },
+      "eer_coverage_365d": {
+        "name": "Eer coverage 365d"
+      },
+      "heating_energy_paired_overall": {
+        "name": "Heating energy paired overall"
+      },
+      "heating_electricity_paired_overall": {
+        "name": "Heating electricity paired overall"
+      },
+      "cooling_energy_paired_overall": {
+        "name": "Cooling energy paired overall"
+      },
+      "cooling_electricity_paired_overall": {
+        "name": "Cooling electricity paired overall"
+      },
+      "cop_overall": {
+        "name": "Cop overall"
+      },
+      "eer_overall": {
+        "name": "Eer overall"
+      },
+      "cop_coverage_overall": {
+        "name": "Cop coverage overall"
+      },
+      "eer_coverage_overall": {
+        "name": "Eer coverage overall"
+      },
+      "compressor_starts_observed": {
+        "name": "Compressor starts observed"
+      },
+      "compressor_runtime_observed": {
+        "name": "Compressor runtime observed"
+      },
+      "compressor_starts_day": {
+        "name": "Compressor starts day"
+      },
+      "compressor_runtime_day": {
+        "name": "Compressor runtime day"
+      },
+      "compressor_cycle_average": {
+        "name": "Compressor cycle average"
+      },
+      "curve_base_target": {
+        "name": "Curve base target"
+      },
+      "curve_offset": {
+        "name": "Curve offset"
+      },
+      "curve_advised_target": {
+        "name": "Curve advised target"
+      },
+      "curve_status": {
+        "name": "Curve status",
+        "state": {
+          "disabled": "Disabled",
+          "advisory": "Advisory",
+          "source_unavailable": "Source unavailable",
+          "control_locked": "Control locked",
+          "inactive_mode": "Inactive mode",
+          "native_curve_active": "Native curve active",
+          "cooldown": "Cooldown",
+          "unchanged": "Unchanged",
+          "controlling": "Controlling",
+          "manual_override": "Manual override",
+          "write_error": "Write error"
+        }
+      },
+      "thermal_power_hydraulic_estimated": {
+        "name": "Estimated hydraulic thermal power"
+      },
+      "thermal_power_external_reported": {
+        "name": "Reported external heat meter power"
       }
     },
     "number": {
@@ -554,6 +909,144 @@
       },
       "control_enabled": {
         "name": "Modbus control authorized"
+      },
+      "compressor_active": {
+        "name": "Compressor active"
+      },
+      "fan_active": {
+        "name": "Fan active"
+      },
+      "circulation_pump_active": {
+        "name": "Circulation pump active"
+      },
+      "dhw_heater_active": {
+        "name": "Dhw heater active"
+      },
+      "space_heater_active": {
+        "name": "Space heater active"
+      },
+      "floor_heater_active": {
+        "name": "Floor heater active"
+      },
+      "crankcase_heater_active": {
+        "name": "Crankcase heater active"
+      },
+      "chassis_heater_active": {
+        "name": "Chassis heater active"
+      },
+      "return_pump_valve_active": {
+        "name": "Return pump valve active"
+      },
+      "space_three_way_valve_active": {
+        "name": "Space three way valve active"
+      },
+      "floor_three_way_valve_active": {
+        "name": "Floor three way valve active"
+      },
+      "four_way_valve_active": {
+        "name": "Four way valve active"
+      },
+      "auxiliary_pump_active": {
+        "name": "Auxiliary pump active"
+      },
+      "fault_0002_wrong_phase": {
+        "name": "Wrong phase"
+      },
+      "fault_0002_missing_phase": {
+        "name": "Missing phase"
+      },
+      "fault_0002_water_flow_fault": {
+        "name": "Water flow fault"
+      },
+      "fault_0002_communication_fault": {
+        "name": "Communication fault"
+      },
+      "fault_0002_emergency_fault": {
+        "name": "Emergency fault"
+      },
+      "fault_0002_use_time_expired": {
+        "name": "Use time expired"
+      },
+      "fault_0002_dhw_sensor_fault": {
+        "name": "Dhw sensor fault"
+      },
+      "fault_0002_inlet_sensor_fault": {
+        "name": "Inlet sensor fault"
+      },
+      "fault_0002_indoor_sensor_fault": {
+        "name": "Indoor sensor fault"
+      },
+      "fault_0002_outdoor_sensor_fault": {
+        "name": "Outdoor sensor fault"
+      },
+      "fault_0002_dhw_return_sensor_fault": {
+        "name": "Dhw return sensor fault"
+      },
+      "fault_0002_cooling_outlet_too_low": {
+        "name": "Cooling outlet too low"
+      },
+      "fault_0002_water_level_fault": {
+        "name": "Water level fault"
+      },
+      "fault_0002_outlet_sensor_fault": {
+        "name": "Outlet sensor fault"
+      },
+      "fault_0002_heating_outlet_too_high": {
+        "name": "Heating outlet too high"
+      },
+      "fault_0002_water_temperature_difference_too_high": {
+        "name": "Water temperature difference too high"
+      },
+      "fault_0003_outdoor_temperature_too_low": {
+        "name": "Outdoor temperature too low"
+      },
+      "fault_0003_indoor_humidity_sensor_fault": {
+        "name": "Indoor humidity sensor fault"
+      },
+      "fault_0003_phase_dip_switch_fault": {
+        "name": "Phase dip switch fault"
+      },
+      "fault_0003_pump_1_fault": {
+        "name": "Pump 1 fault"
+      },
+      "fault_0003_pump_2_fault": {
+        "name": "Pump 2 fault"
+      },
+      "fault_0003_low_water_flow": {
+        "name": "Low water flow"
+      },
+      "fault_0004_phase_sequence_disconnected": {
+        "name": "Phase sequence disconnected"
+      },
+      "fault_0004_expansion_board_communication_fault": {
+        "name": "Expansion board communication fault"
+      },
+      "fault_0004_plate_sensor_fault": {
+        "name": "Plate sensor fault"
+      },
+      "fault_0004_fan_1_communication_fault": {
+        "name": "Fan 1 communication fault"
+      },
+      "fault_0004_fan_2_communication_fault": {
+        "name": "Fan 2 communication fault"
+      },
+      "fault_0004_cascade_model_mismatch": {
+        "name": "Cascade model mismatch"
+      },
+      "fault_0004_solar_sensor_fault": {
+        "name": "Solar sensor fault"
+      },
+      "fault_0004_auxiliary_heat_sensor_fault": {
+        "name": "Auxiliary heat sensor fault"
+      },
+      "fault_0004_buffer_sensor_fault": {
+        "name": "Buffer sensor fault"
+      },
+      "fault_0004_total_outlet_sensor_fault": {
+        "name": "Total outlet sensor fault"
+      },
+      "fault_0004_zone_1_sensor_fault": {
+        "name": "Zone 1 sensor fault"
       }
     },
     "button": {

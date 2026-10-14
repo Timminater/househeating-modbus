@@ -1,5 +1,44 @@
 # Bronbasis en controlegrenzen
 
+## Aanvulling 0.4.0 — 15 oktober 2026
+
+- HouseHeating PDF p166, p173 en p174 visueel gecontroleerd: relaiswoorden,
+  compressor 1 op 0x001A bit 0, pompen, hulpverwarmers, ventilator en kleppen.
+  Dubbelzinnige/lege relaisbits zijn niet ingevuld.
+- CNC-Buddy/R290_heatpump op commit 44e8432b3b31cfe9eae44309d7c0f38a5e4ee685
+  is uitsluitend als functionele inspiratie beoordeeld. De broncode en het
+  meegeleverde dashboard zijn niet gekopieerd of geïncorporeerd; de aanwezige
+  licentietekst beperkt incorporatie in andere projecten.
+- Stooklijn: eigen lineaire interpolatie, exponentiële afvlakking en expliciete
+  begrenzing. De lage accureserve krijgt voorrang op PV-verhoging; er is geen
+  overgenomen absolute-offsetcompetitie.
+- HA-API: https://developers.home-assistant.io/docs/auth_permissions/ en
+  https://developers.home-assistant.io/docs/dev_101_services/ voor administratoracties
+  en antwoordgegevens. Werkelijke HA 2026.10.1-klassen zijn voor tests gebruikt.
+- Dashboard: eigen standaardkaarten en entiteitenregister-resolutie, geen
+  kopie van derde partijen, direct .storage-bestandsbeheer of private Lovelace-collecties.
+
+Fysieke firmwarecompatibiliteit, meterkwaliteit, optimale stooklijn/PV-instellingen
+en feitelijk apparaatgedrag blijven afzonderlijke praktijkvragen.
+
+## Aanvulling energiemonitoring — 14 oktober 2026
+
+De lokale registerbasis en actuele HA 2026.10.1-package zijn voor de uitbreiding
+gebruikt. Het document levert geen bewijs van tellerresets of meetnauwkeurigheid.
+
+- PDF p167: 0x005C met schaal 0,01 kW; 0x005D als gerapporteerde kWh.
+- PDF p160 parameter 25 en p167: waterdebiet in L/min / echte waarde.
+- 0x004F/0x0050: waterinlaat en -uitlaat; de bestaande instelbare meetdeler blijft leidend.
+- Sensor-metadata: https://developers.home-assistant.io/docs/core/entity/sensor/
+- Getoetst aan de geïnstalleerde HA 2026.10.1-klassen: POWER, ENERGY,
+  VOLUME_FLOW_RATE, TEMPERATURE_DELTA en state classes MEASUREMENT/TOTAL.
+- De gebruikte HA Store-API, state_report-eventlisteners, last_reported,
+  selectors en lifecycle zijn in echte runtime-tests aangeroepen.
+
+Thermische berekening is de expliciete waterbenadering uit het goedgekeurde
+plan, met handmatige vloeistofeigenschappen. Geen geijkte nauwkeurigheid,
+automatische glycolcurve of bewezen firmwaregedrag toegevoegd.
+
 Geraadpleegd voor deze implementatie op 13 oktober 2026.
 
 ## Apparaatprotocol

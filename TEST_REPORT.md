@@ -1,4 +1,107 @@
-# Testrapport — HouseHeating Modbus 0.2.0
+# Testrapport — HouseHeating Modbus ontwikkelversies
+
+## Validatie voor release 0.4.0 — 15 oktober 2026
+
+Bronbasis: v0.2.0 op c6397fb, met de eerder lokaal ontwikkelde 0.3.0-
+energiemonitoring en de 0.4.0-functies. De volledige releasekandidaat is vóór
+publicatie opnieuw gecontroleerd. Geen productie-installatie of herstart uitgevoerd.
+Alle Modbus-acties in de tests gebruiken gesimuleerde units, nooit een fysieke gateway.
+
+| Controle | Resultaat |
+|---|---|
+| Protocol, monitoring, stooklijn en waargenomen statistieken | 292 geslaagd |
+| Bestaande adapter-/flowcontracten | 16 geslaagd |
+| Echte HA 2026.10.1-klassen, bronlisteners, services, opslag en lifecycle | 49 geslaagd |
+| Totaal | **357 geslaagd** |
+| Compilatie, JSON, vertalingsdekking en HACS-layout | Geslaagd |
+| Vendorpariteit en geïsoleerd uitgepakt installatiepakket | Geslaagd |
+
+Nieuwe tests bewijzen de softwarelogica voor compressorbaselines, starts,
+conservatief waargenomen draaitijd, volledige versus gedeeltelijke cycli,
+herstart/gaten/opslagfouten, middernacht, externe warmte naast hydraulische
+schatting en 400 dagen historie met blijvend totaalrendement.
+
+Stooklijntests omvatten grenzen/interpolatie/afvlakking, PV-hold en hysteresis,
+accureserveprioriteit, koelrichting, ontbrekende bronnen, eenheden, readback,
+alle vier mogelijke setpointdoelen, bestaande modi/power behouden, vergrendelde
+bediening, native curve, sensorfout, gewijzigde identiteit, handmatige override,
+onzeker schrijfantwoord, persistente blokkering na reload, opslagfout vóór
+opdracht en unload vóór een nog wachtende opdracht. Geen herhaalwrite.
+
+Een bevroren lijst uit v0.3.0 controleert alle bestaande platform- én monitoring-
+unique IDs. De bestaande model-/schaal-/schrijfallowlists zijn behouden.
+Dashboardtests controleren hernoemde en uitgeschakelde entiteiten, JSON-response
+en het weigeren van een niet-administrator. Echte setup/unload is getest met
+monitoring aan/uit en met de nieuwe operationele functies aan/uit.
+
+Omgeving: bestaande Python 3.14.6 / HA 2026.10.1 voor protocol en runtime;
+bestaande Python 3.13.15 voor adaptercontracten. Geen nieuwe pakketten geïnstalleerd.
+Eén upstream aiohttp-deprecationwaarschuwing; geen testfouten.
+
+Niet bewezen: daadwerkelijke live bediening, HACS-installatie, frontendweergave
+in de productieomgeving, meter-/sensorijking en optimale curve/PV-regelinstellingen.
+Zie [FUNCTIES.md](FUNCTIES.md) voor de bewuste functionele grenzen.
+
+## Historische lokale validatie 0.3.0
+
+## Lokale validatie 0.3.0 — 14 oktober 2026
+
+Basis: v0.2.0 commit `c6397fb`. Nieuwe versie lokaal ontwikkeld; geen commits,
+publicatie, installatie, herstart of verbinding met een fysieke warmtepomp.
+
+| Controle | Resultaat |
+|---|---|
+| Protocol, berekeningen, boekhouding en fout-/tijdscenario's | 266 geslaagd |
+| Bestaande adapter-/flowcontracten | 16 geslaagd |
+| Echte HA 2026.10.1-klassen, monitoring, opslag, bronnen en lifecycle | 23 geslaagd |
+| Totaal | **305 geslaagd** |
+| Compilatie custom, bibliotheek, Core-voorbereiding en tools | Geslaagd |
+| HACS-layout, JSON, vendorpariteit en ZIP-volledigheid | Geslaagd |
+| Geïsoleerde ZIP: echte HA-platformimports, schema, monitoringdefault en iconen | Geslaagd |
+
+Nieuwe rekentests controleren onder meer raw 257 → 2,57 kW, 20 L/min en
+5 K → circa 6,97 kW, COP uit energie in plaats van gemiddeld rendement,
+kalibratie, tekenwisseling, ontbrekende/stale groepen, onafhankelijke meetdelers,
+geen schrijfverkeer, defrostverlies, standby, koeling, ambigue modi,
+tellerresets/sprongen/resolutie, gelijke rapportages, echte rapportagetijden,
+herstel zonder offline warmte, configuratiewijziging en corrupte opslag.
+Kalendergevallen omvatten middernacht, maandgrens en dagen van 23/25 uur.
+
+Runtime-tests gebruiken echte Home Assistant 2026.10.1-, ConfigEntry-, Store-,
+SensorEntity-, selector-, event- en coordinator-klassen. Alleen het fysieke
+Modbus-apparaat en waar nodig opslagfouten worden gesimuleerd. Getest zijn
+opslag vóór publicatie, herstel na opslagfout zonder integratiebrug, persistente
+Store-roundtrip, ongewijzigde bestaande IDs, vergrendelde bediening,
+externe eenheden, bronlussen, ongewijzigde rapportages, watchdog, opties zonder
+wijziging van vrijgave/fingerprint en echte setup/unload met monitoring aan/uit.
+
+Omgeving: bestaande Python 3.14.6 / HA 2026.10.1-runtime voor protocol en
+runtime-tests; bestaande Python 3.13.15-omgeving voor adaptercontracten. Er
+zijn geen nieuwe pakketten geïnstalleerd. Eén upstream aiohttp-deprecationwaarschuwing.
+
+Reproduceren in passende bestaande omgevingen, afzonderlijke processen vanwege
+de testdoubles van de adaptercontracten:
+
+```text
+python tools/vendor_library.py
+python -m pytest -q device_library/tests
+python -m pytest -q tests
+python -m pytest -q runtime_tests --basetemp=<lokale-testmap>
+python -m compileall -q custom_components device_library/src core_integration tools
+python tools/package.py
+python tools/validate_release.py
+```
+
+De zelfstandige HACS-ZIP bevat monitoring en telemetry; validatie controleert
+JSON, vendorpariteit, platformimports in een geïsoleerd uitgepakt pakket en
+standaard uitgeschakelde monitoring. Bestaande climate-/boilerbediening,
+write-allowlists, verificatie en entiteitsidentiteiten blijven behouden.
+
+**Niet bewezen:** fysieke flow-/temperatuurschaal, kalibratie, tellerresolutie,
+reset-/overloopgedrag van 0x005D, actieve functie tijdens gemengde koeling/DHW,
+meetnauwkeurigheid, elektrische systeemgrens en live HACS-installatie.
+
+## Historische validatie 0.2.0
 
 ## Actuele validatie
 

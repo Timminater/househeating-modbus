@@ -7,12 +7,24 @@
 Integratie voor de **HouseHeating HH-C3-12** via de gedeelde Modbus-verbinding
 van Home Assistant. Monitoring, verwarming/koeling, warmwater en normale setpoints.
 
-**Versie 0.2.0 · Home Assistant 2026.10.1 of nieuwer · experimenteel**
+**Versie 0.4.0 · Home Assistant 2026.10.1 of nieuwer · experimenteel**
 
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Timminater&repository=househeating-modbus&category=integration)
 
-Getest met echte Home Assistant-klassen en gesimuleerde Modbus-antwoorden.
-Werking op een echte warmtepomp is nog niet bevestigd.
+357 softwaretests geslaagd met echte Home Assistant-klassen en gesimuleerde
+Modbus-antwoorden. Werking op een fysieke warmtepomp is nog niet bevestigd.
+
+## Nieuw in 0.4.0
+
+- Elektrische en geschatte thermische energie, COP/EER en meetdekking; externe elektriciteits- en thermische vermogensbronnen.
+- Waargenomen compressorstarts, draaiuren en cyclusduur; extra relais-/storingsentiteiten.
+- Rendement over dag, maand, gisteren, 7, 30 en 365 kalenderdagen en de totale meetperiode.
+- Optionele eigen stooklijn met PV-/accucorrectie, adviesmodus en afzonderlijk bevestigde automatische bediening.
+- Dashboard samenstellen met actuele entiteitsnamen en standaardkaarten.
+
+Nieuwe optionele functies staan standaard uit. Bestaande entiteitsidentiteiten,
+configuratie, gedeelde verbinding en schrijfbeveiligingen blijven behouden.
+Zie [FUNCTIES.md](FUNCTIES.md) en [ENERGIEMONITORING.md](ENERGIEMONITORING.md).
 
 ## Installeren met HACS (aanbevolen)
 
@@ -34,7 +46,7 @@ Voeg deze afzonderlijke repository toe, niet `Timminater/timminaters-integration
 
 ## Handmatig installeren
 
-1. Download `househeating_modbus_v0.2.0.zip` bij de
+1. Download `househeating_modbus_v0.4.0.zip` bij de
    [nieuwste release](https://github.com/Timminater/househeating-modbus/releases/latest).
 2. Pak het archief uit op je computer.
 3. Kopieer de volledige map `custom_components/househeating` naar de configuratiemap
@@ -111,6 +123,12 @@ Niet-ondersteunde extra groepen blokkeren de basisuitlezing niet. Extra metingen
 kun je uitzetten via de opties. Leessensoren naast bedieningsentiteiten zijn
 bij nieuwe installaties standaard uitgeschakeld.
 
+## Energiemonitoring (optioneel)
+
+Open de integratieopties en kies **Energiemonitoring (alleen lezen)**. Kies Modbus-vermogen of een externe warmtepompmeter; een externe kWh-teller is optioneel. Monitoring staat standaard uit. Bevestig de temperatuur- en debietschaal voordat thermische berekeningen worden vrijgegeven. Deze route verandert geen bedieningsvrijgave of warmtepompinstellingen.
+
+Zie [ENERGIEMONITORING.md](ENERGIEMONITORING.md) voor formules, kalenderperioden, meetdekking, tellerresets en beperkingen.
+
 ## Updates en herstel
 
 Maak eerst een Home Assistant-back-up. Installeer updates via HACS en herstart
@@ -124,7 +142,7 @@ eenmaal verstuurd en teruggelezen. Een onzekere opdracht wordt niet automatisch 
 
 Geen geforceerd ontdooien, fabrieksreset, virtuele temperatuursensoren of onbeperkte
 registerwrites. De energieteller is nog niet gevalideerd voor het energiedashboard;
-er is geen ongeteste COP-berekening.
+COP en warmte-energie zijn optionele schattingen; zie [ENERGIEMONITORING.md](ENERGIEMONITORING.md).
 
 Zie [INSTALLATIE.md](INSTALLATIE.md), [SOURCES.md](SOURCES.md) en
 [TEST_REPORT.md](TEST_REPORT.md) voor ingebruikname, bronnen en testgrenzen.
@@ -137,7 +155,7 @@ uit de gekozen release. `device_library` is de zelfstandige bibliotheek;
 `core_integration` is alleen voorbereiding op een eventuele Core-bijdrage.
 
 ```sh
-python -m pip install pytest pytest-asyncio probatio==0.13.0
+python -m pip install pytest pytest-asyncio probatio==0.13.0 tzdata
 python -m pytest -q device_library/tests
 python -m pytest -q tests
 python tools/vendor_library.py

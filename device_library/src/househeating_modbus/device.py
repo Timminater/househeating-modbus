@@ -11,7 +11,7 @@ from math import isfinite
 from time import monotonic, time
 from typing import TYPE_CHECKING
 
-from .models import CommunicationError, DeviceConfig, Identity, Snapshot, VerificationError, WriteRejected
+from .models import CommunicationError, DeviceConfig, Identity, ReadWindow, Snapshot, VerificationError, WriteRejected
 from .registers import BY_KEY, SELECTS, SETPOINT_KEYS, WRITABLE_KEYS
 
 if TYPE_CHECKING:
@@ -38,6 +38,7 @@ class HeatPump:
         self._slow_at = 0.0
         self._slow_raw: dict[int, int] = {}
         self._slow_errors: dict[str, str] = {}
+        self._slow_samples: dict[int, ReadWindow] = {}
         self.last_write: dict[str, str | int | float] | None = None
         # These requirements participate in the SHARED connection's arbitration.
         unit.set_message_spacing(self.config.spacing)
@@ -55,6 +56,7 @@ class HeatPump:
         self._slow_at = 0
         self._slow_raw = {}
         self._slow_errors = {}
+        self._slow_samples = {}
 
     async def _read(self, address: int, count: int) -> dict[int, int]:
         result: dict[int, int] = {}
@@ -72,19 +74,27 @@ class HeatPump:
             result.update({address + offset + i: value for i, value in enumerate(values)})
         return result
 
-    async def async_update(self, *, force_optional: bool = False) -> Snapshot:
+    async def async_update(self, *, force_optional: bool = False, telemetry_enabled: bool = False,
+                           diagnostics_enabled: bool = False) -> Snapshot:
         """Read mandatory data atomically; optional failures never reuse old values."""
         async with self._lock:
             raw: dict[int, int] = {}
+            samples: dict[int, ReadWindow] = {}
+            async def read(address, count, sample_target=samples):
+                start = time()
+                values = await self._read(address, count)
+                window = ReadWindow(start, time(), monotonic())
+                sample_target.update({a: window for a in values})
+                return values
             try:
                 for address, count in CORE_BLOCKS:
-                    raw.update(await self._read(address, count))
+                    raw.update(await read(address, count))
             except CommunicationError:
                 self.invalidate_optional()
                 raise
             errors: dict[str, str] = {}
             try:
-                raw.update(await self._read(*IDENTITY_BLOCK))
+                raw.update(await read(*IDENTITY_BLOCK))
             except CommunicationError as err:
                 errors["identity"] = str(err)
             identity = Identity.from_raw(raw)
@@ -94,30 +104,47 @@ class HeatPump:
             if due:
                 optional: dict[int, int] = {}
                 optional_errors: dict[str, str] = {}
+                optional_samples: dict[int, ReadWindow] = {}
                 blocks = list(EXTENDED_BLOCKS) if self.config.extended else []
                 if self.config.curves and identity is not None and identity.protocol >= 130:
                     blocks.append(("curves", *CURVE_BLOCK))
                 for name, address, count in blocks:
                     try:
-                        optional.update(await self._read(address, count))
+                        optional.update(await read(address, count, optional_samples))
                     except CommunicationError as err:
                         optional_errors[name] = str(err)
                 self._slow_raw, self._slow_errors = optional, optional_errors
+                self._slow_samples = optional_samples
                 self._slow_at = monotonic()
                 optional_timestamp = time()
             else:
                 optional_timestamp = self.snapshot.optional_timestamp
             raw.update(self._slow_raw)
+            samples.update(self._slow_samples)
             errors.update(self._slow_errors)
             # Read frequently changing optional measurements on every scan, without
             # making unsupported extras fatal to the mandatory polling cycle.
             if self.config.extended:
                 for name, address, count in FAST_OPTIONAL_BLOCKS:
                     try:
-                        raw.update(await self._read(address, count))
+                        raw.update(await read(address, count))
                     except CommunicationError as err:
                         errors[name] = str(err)
-            self.snapshot = Snapshot(raw, errors, time(), optional_timestamp)
+            if telemetry_enabled:
+                for address in (0x58, 0x5C, 0x5D):
+                    if address not in raw:
+                        try:
+                            raw.update(await read(address, 1))
+                        except CommunicationError as err:
+                            errors[f"telemetry_{address:04x}"] = str(err)
+            if diagnostics_enabled:
+                for address in (0x19,0x1A):
+                    if address not in raw:
+                        try:
+                            raw.update(await read(address,1))
+                        except CommunicationError as err:
+                            errors[f"diagnostics_{address:04x}"]=str(err)
+            self.snapshot = Snapshot(raw, errors, time(), optional_timestamp, samples)
             return self.snapshot
 
     def validate_for_control(self, snapshot: Snapshot | None = None) -> Identity:

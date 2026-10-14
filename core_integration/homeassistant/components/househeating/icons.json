@@ -1,6 +1,253 @@
 {
   "entity": {
-    "sensor": {},
+    "sensor": {
+      "selected_electrical_power": {
+        "default": "mdi:flash"
+      },
+      "electrical_energy_total": {
+        "default": "mdi:flash"
+      },
+      "water_flow_calibrated": {
+        "default": "mdi:heat-wave"
+      },
+      "water_delta_temperature": {
+        "default": "mdi:heat-wave"
+      },
+      "thermal_power_estimated": {
+        "default": "mdi:heat-wave"
+      },
+      "thermal_energy_delivered": {
+        "default": "mdi:heat-wave"
+      },
+      "thermal_energy_extracted": {
+        "default": "mdi:heat-wave"
+      },
+      "thermal_energy_net": {
+        "default": "mdi:heat-wave"
+      },
+      "cop_instant": {
+        "default": "mdi:chart-line"
+      },
+      "eer_instant": {
+        "default": "mdi:chart-line"
+      },
+      "monitoring_status": {
+        "default": "mdi:check-network-outline"
+      },
+      "electrical_energy_day": {
+        "default": "mdi:flash"
+      },
+      "thermal_energy_net_day": {
+        "default": "mdi:heat-wave"
+      },
+      "heating_energy_paired_day": {
+        "default": "mdi:heat-wave"
+      },
+      "heating_electricity_paired_day": {
+        "default": "mdi:flash"
+      },
+      "cooling_energy_paired_day": {
+        "default": "mdi:heat-wave"
+      },
+      "cooling_electricity_paired_day": {
+        "default": "mdi:flash"
+      },
+      "cop_day": {
+        "default": "mdi:chart-line"
+      },
+      "cop_coverage_day": {
+        "default": "mdi:chart-line"
+      },
+      "eer_day": {
+        "default": "mdi:chart-line"
+      },
+      "eer_coverage_day": {
+        "default": "mdi:chart-line"
+      },
+      "electrical_energy_month": {
+        "default": "mdi:flash"
+      },
+      "thermal_energy_net_month": {
+        "default": "mdi:heat-wave"
+      },
+      "heating_energy_paired_month": {
+        "default": "mdi:heat-wave"
+      },
+      "heating_electricity_paired_month": {
+        "default": "mdi:flash"
+      },
+      "cooling_energy_paired_month": {
+        "default": "mdi:heat-wave"
+      },
+      "cooling_electricity_paired_month": {
+        "default": "mdi:flash"
+      },
+      "cop_month": {
+        "default": "mdi:chart-line"
+      },
+      "cop_coverage_month": {
+        "default": "mdi:chart-line"
+      },
+      "eer_month": {
+        "default": "mdi:chart-line"
+      },
+      "eer_coverage_month": {
+        "default": "mdi:chart-line"
+      },
+      "heating_energy_paired_yesterday": {
+        "default": "mdi:chart-line"
+      },
+      "heating_electricity_paired_yesterday": {
+        "default": "mdi:chart-line"
+      },
+      "cooling_energy_paired_yesterday": {
+        "default": "mdi:chart-line"
+      },
+      "cooling_electricity_paired_yesterday": {
+        "default": "mdi:chart-line"
+      },
+      "cop_yesterday": {
+        "default": "mdi:chart-line"
+      },
+      "cop_coverage_yesterday": {
+        "default": "mdi:chart-line"
+      },
+      "eer_yesterday": {
+        "default": "mdi:chart-line"
+      },
+      "eer_coverage_yesterday": {
+        "default": "mdi:chart-line"
+      },
+      "heating_energy_paired_7d": {
+        "default": "mdi:chart-line"
+      },
+      "heating_electricity_paired_7d": {
+        "default": "mdi:chart-line"
+      },
+      "cooling_energy_paired_7d": {
+        "default": "mdi:chart-line"
+      },
+      "cooling_electricity_paired_7d": {
+        "default": "mdi:chart-line"
+      },
+      "cop_7d": {
+        "default": "mdi:chart-line"
+      },
+      "cop_coverage_7d": {
+        "default": "mdi:chart-line"
+      },
+      "eer_7d": {
+        "default": "mdi:chart-line"
+      },
+      "eer_coverage_7d": {
+        "default": "mdi:chart-line"
+      },
+      "heating_energy_paired_30d": {
+        "default": "mdi:chart-line"
+      },
+      "heating_electricity_paired_30d": {
+        "default": "mdi:chart-line"
+      },
+      "cooling_energy_paired_30d": {
+        "default": "mdi:chart-line"
+      },
+      "cooling_electricity_paired_30d": {
+        "default": "mdi:chart-line"
+      },
+      "cop_30d": {
+        "default": "mdi:chart-line"
+      },
+      "cop_coverage_30d": {
+        "default": "mdi:chart-line"
+      },
+      "eer_30d": {
+        "default": "mdi:chart-line"
+      },
+      "eer_coverage_30d": {
+        "default": "mdi:chart-line"
+      },
+      "heating_energy_paired_365d": {
+        "default": "mdi:chart-line"
+      },
+      "heating_electricity_paired_365d": {
+        "default": "mdi:chart-line"
+      },
+      "cooling_energy_paired_365d": {
+        "default": "mdi:chart-line"
+      },
+      "cooling_electricity_paired_365d": {
+        "default": "mdi:chart-line"
+      },
+      "cop_365d": {
+        "default": "mdi:chart-line"
+      },
+      "cop_coverage_365d": {
+        "default": "mdi:chart-line"
+      },
+      "eer_365d": {
+        "default": "mdi:chart-line"
+      },
+      "eer_coverage_365d": {
+        "default": "mdi:chart-line"
+      },
+      "heating_energy_paired_overall": {
+        "default": "mdi:chart-line"
+      },
+      "heating_electricity_paired_overall": {
+        "default": "mdi:chart-line"
+      },
+      "cooling_energy_paired_overall": {
+        "default": "mdi:chart-line"
+      },
+      "cooling_electricity_paired_overall": {
+        "default": "mdi:chart-line"
+      },
+      "cop_overall": {
+        "default": "mdi:chart-line"
+      },
+      "cop_coverage_overall": {
+        "default": "mdi:chart-line"
+      },
+      "eer_overall": {
+        "default": "mdi:chart-line"
+      },
+      "eer_coverage_overall": {
+        "default": "mdi:chart-line"
+      },
+      "compressor_starts_observed": {
+        "default": "mdi:chart-line"
+      },
+      "compressor_runtime_observed": {
+        "default": "mdi:chart-line"
+      },
+      "compressor_starts_day": {
+        "default": "mdi:chart-line"
+      },
+      "compressor_runtime_day": {
+        "default": "mdi:chart-line"
+      },
+      "compressor_cycle_average": {
+        "default": "mdi:chart-line"
+      },
+      "curve_base_target": {
+        "default": "mdi:chart-bell-curve-cumulative"
+      },
+      "curve_offset": {
+        "default": "mdi:chart-bell-curve-cumulative"
+      },
+      "curve_advised_target": {
+        "default": "mdi:chart-bell-curve-cumulative"
+      },
+      "curve_status": {
+        "default": "mdi:chart-bell-curve-cumulative"
+      },
+      "thermal_power_hydraulic_estimated": {
+        "default": "mdi:chart-line"
+      },
+      "thermal_power_external_reported": {
+        "default": "mdi:chart-line"
+      }
+    },
     "number": {},
     "select": {
       "operating_mode": {
@@ -33,6 +280,45 @@
       },
       "defrost": {
         "default": "mdi:snowflake-melt"
+      },
+      "compressor_active": {
+        "default": "mdi:electric-switch"
+      },
+      "fan_active": {
+        "default": "mdi:electric-switch"
+      },
+      "circulation_pump_active": {
+        "default": "mdi:electric-switch"
+      },
+      "dhw_heater_active": {
+        "default": "mdi:electric-switch"
+      },
+      "space_heater_active": {
+        "default": "mdi:electric-switch"
+      },
+      "floor_heater_active": {
+        "default": "mdi:electric-switch"
+      },
+      "crankcase_heater_active": {
+        "default": "mdi:electric-switch"
+      },
+      "chassis_heater_active": {
+        "default": "mdi:electric-switch"
+      },
+      "return_pump_valve_active": {
+        "default": "mdi:electric-switch"
+      },
+      "space_three_way_valve_active": {
+        "default": "mdi:electric-switch"
+      },
+      "floor_three_way_valve_active": {
+        "default": "mdi:electric-switch"
+      },
+      "four_way_valve_active": {
+        "default": "mdi:electric-switch"
+      },
+      "auxiliary_pump_active": {
+        "default": "mdi:electric-switch"
       }
     },
     "button": {

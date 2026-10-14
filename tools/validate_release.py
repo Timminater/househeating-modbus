@@ -37,6 +37,8 @@ def main():
         assert archive.testzip() is None
         names = set(archive.namelist())
         for name in ('manifest.json', '__init__.py', 'config_flow.py', 'climate.py', 'water_heater.py',
+                     'monitoring.py', 'operation.py', 'dashboard.py', 'services.yaml',
+                     '_vendor/househeating_modbus/operation.py', '_vendor/househeating_modbus/telemetry.py',
                      '_vendor/househeating_modbus/controls.py', 'translations/nl.json',
                      'translations/en.json', 'brand/icon.png', 'brand/icon@2x.png'):
             assert 'custom_components/househeating/' + name in names, name
@@ -52,11 +54,26 @@ import importlib, json, sys
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 for part in ('', '.config_flow', '.climate', '.water_heater', '.sensor', '.binary_sensor',
-             '.number', '.select', '.switch', '.button', '.diagnostics'):
+             '.number', '.select', '.switch', '.button', '.diagnostics', '.monitoring', '.operation', '.dashboard'):
     importlib.import_module('custom_components.househeating' + part)
 from custom_components.househeating.config_flow import connection_schema
 import probatio
 assert isinstance(connection_schema({}), probatio.Schema)
+from custom_components.househeating._vendor.househeating_modbus.telemetry import MonitoringConfig
+assert MonitoringConfig.from_options({}).enabled is False
+from custom_components.househeating._vendor.househeating_modbus.operation import CurveConfig
+assert CurveConfig.from_options({}).enabled is False
+assert CurveConfig.from_options({}).automatic is False
+from custom_components.househeating.sensor import MONITORING_SENSORS,OPERATION_SENSORS
+from custom_components.househeating._vendor.househeating_modbus.operation import RELAY_FLAGS
+for name in ('strings.json','translations/nl.json','translations/en.json'):
+    labels=json.loads((Path(sys.argv[1])/'custom_components/househeating'/name).read_text(encoding='utf-8'))
+    assert set(MONITORING_SENSORS)|set(OPERATION_SENSORS) <= set(labels['entity']['sensor'])
+    assert set(RELAY_FLAGS) <= set(labels['entity']['binary_sensor'])
+import yaml
+from homeassistant.helpers.selector import validate_selector
+services=yaml.safe_load((Path(sys.argv[1])/'custom_components/househeating/services.yaml').read_text(encoding='utf-8'))
+validate_selector(services['generate_dashboard']['fields']['entry_id']['selector'])
 from PIL import Image
 for name, size in (('icon.png', 256), ('icon@2x.png', 512)):
     with Image.open(Path(sys.argv[1]) / 'custom_components/househeating/brand' / name) as im:

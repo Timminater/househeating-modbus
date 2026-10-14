@@ -1,14 +1,21 @@
 # HouseHeating Modbus — installatie en eerste ingebruikname
 
-**Versie 0.2.0 · experimentele praktijktestversie · doelmodel HH-C3-12**
+**Versie 0.4.0 · experimenteel · doelmodel HH-C3-12 · Home Assistant 2026.10.1+**
 
-Deze integratie is ontwikkeld tegen de gedeelde Modbus-API van Home Assistant Core 2026.10.1. Het pakket is ingesteld op minimaal die versie. De protocolcode en adapterlogica zijn met gesimuleerde antwoorden getest; een volledige Home Assistant-runtime en een echte warmtepomp zijn hier niet getest. Maak vooraf een Home Assistant-back-up.
+Gebruik bij voorkeur HACS. Bestaande gebruikers werken de integratie bij;
+verwijder/toevoegen is niet nodig. Maak vooraf een Home Assistant-back-up.
+De protocolcode, echte HA-klassen en lifecycle zijn softwarematig getest;
+productie-installatie en fysieke warmtepomp zijn niet gevalideerd.
+
+Energiemonitoring, compressorstatistieken en eigen stooklijn staan standaard uit.
+Automatische stooklijnbediening vraagt bestaande vrijgave en expliciete
+bevestiging. Zie [FUNCTIES.md](FUNCTIES.md) en [ENERGIEMONITORING.md](ENERGIEMONITORING.md).
 
 ## 1. Installeren
 
 Gebruik bij voorkeur HACS, zoals beschreven in [README.md](README.md#installeren-met-hacs-aanbevolen). Hieronder staat het handmatige alternatief.
 
-Pak `househeating_modbus_v0.2.0.zip` uit. Kopieer alleen de map `custom_components/househeating` naar de configuratiemap van Home Assistant, zodat dit bestand bestaat:
+Pak `househeating_modbus_v0.4.0.zip` uit. Kopieer alleen de map `custom_components/househeating` naar de configuratiemap van Home Assistant, zodat dit bestand bestaat:
 
 ```text
 /config/custom_components/househeating/manifest.json
