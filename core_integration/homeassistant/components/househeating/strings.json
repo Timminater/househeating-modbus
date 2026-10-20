@@ -760,6 +760,35 @@
       },
       "thermal_power_external_reported": {
         "name": "Reported external heat meter power"
+      },
+      "heating_cooling_hysteresis": {
+        "name": "Heating/cooling hysteresis (P26)"
+      },
+      "floor_hysteresis": {
+        "name": "Floor-heating hysteresis (P27)"
+      },
+      "dhw_hysteresis": {
+        "name": "Hot-water hysteresis (P96)"
+      },
+      "target_stop_behavior": {
+        "name": "Compressor target-stop behavior (P37)"
+      },
+      "zone_1_setpoint_raw": {
+        "name": "Zone 1 setpoint (raw)"
+      },
+      "zone_2_setpoint_raw": {
+        "name": "Zone 2 setpoint (raw)"
+      },
+      "reported_operation": {
+        "name": "Operating status",
+        "state": {
+          "off": "Off",
+          "fault_shutdown": "Fault shutdown",
+          "target_reached": "Target reached",
+          "waiting": "Waiting",
+          "running": "Running",
+          "standby": "Standby"
+        }
       }
     },
     "number": {
@@ -1047,6 +1076,174 @@
       },
       "fault_0004_zone_1_sensor_fault": {
         "name": "Zone 1 sensor fault"
+      },
+      "fault_0005_high_pressure_switch_fault": {
+        "name": "High pressure switch fault"
+      },
+      "fault_0005_low_pressure_switch_fault": {
+        "name": "Low pressure switch fault"
+      },
+      "fault_0005_high_pressure_too_high": {
+        "name": "High pressure too high"
+      },
+      "fault_0005_high_pressure_too_low": {
+        "name": "High pressure too low"
+      },
+      "fault_0005_discharge_pressure_too_high": {
+        "name": "Discharge pressure too high"
+      },
+      "fault_0005_current_protection": {
+        "name": "Current protection"
+      },
+      "fault_0005_coil_pressure_too_high": {
+        "name": "Coil pressure too high"
+      },
+      "fault_0005_outdoor_coil_sensor_fault": {
+        "name": "Outdoor coil sensor fault"
+      },
+      "fault_0005_suction_sensor_fault": {
+        "name": "Suction sensor fault"
+      },
+      "fault_0005_discharge_sensor_fault": {
+        "name": "Discharge sensor fault"
+      },
+      "fault_0005_economizer_inlet_sensor_fault": {
+        "name": "Economizer inlet sensor fault"
+      },
+      "fault_0005_economizer_outlet_sensor_fault": {
+        "name": "Economizer outlet sensor fault"
+      },
+      "fault_0005_fan_drive_communication_fault": {
+        "name": "Fan drive communication fault"
+      },
+      "fault_0005_fan_fault": {
+        "name": "Fan fault"
+      },
+      "fault_0005_indoor_coil_sensor_fault": {
+        "name": "Indoor coil sensor fault"
+      },
+      "fault_0006_high_pressure_sensor_fault": {
+        "name": "High pressure sensor fault"
+      },
+      "fault_0006_low_pressure_sensor_fault": {
+        "name": "Low pressure sensor fault"
+      },
+      "fault_0006_intermediate_pressure_switch_fault": {
+        "name": "Intermediate pressure switch fault"
+      },
+      "fault_0006_coil_temperature_too_high": {
+        "name": "Coil temperature too high"
+      },
+      "fault_0006_compressor_drive_communication_fault": {
+        "name": "Compressor drive communication fault"
+      },
+      "fault_0007_ipm_overcurrent_protection": {
+        "name": "Ipm overcurrent protection"
+      },
+      "fault_0007_compressor_drive_fault": {
+        "name": "Compressor drive fault"
+      },
+      "fault_0007_compressor_overcurrent": {
+        "name": "Compressor overcurrent"
+      },
+      "fault_0007_drive_input_phase_missing": {
+        "name": "Drive input phase missing"
+      },
+      "fault_0007_ipm_current_sampling_fault": {
+        "name": "Ipm current sampling fault"
+      },
+      "fault_0007_power_component_overheat_shutdown": {
+        "name": "Power component overheat shutdown"
+      },
+      "fault_0007_precharge_fault": {
+        "name": "Precharge fault"
+      },
+      "fault_0007_dc_bus_overvoltage": {
+        "name": "Dc bus overvoltage"
+      },
+      "fault_0007_dc_bus_undervoltage": {
+        "name": "Dc bus undervoltage"
+      },
+      "fault_0007_ac_input_undervoltage": {
+        "name": "Ac input undervoltage"
+      },
+      "fault_0007_ac_input_overvoltage": {
+        "name": "Ac input overvoltage"
+      },
+      "fault_0007_input_voltage_sampling_fault": {
+        "name": "Input voltage sampling fault"
+      },
+      "fault_0007_dsp_pfc_communication_fault": {
+        "name": "Dsp pfc communication fault"
+      },
+      "fault_0007_drive_heatsink_sensor_fault": {
+        "name": "Drive heatsink sensor fault"
+      },
+      "fault_0007_dsp_communication_board_fault": {
+        "name": "Dsp communication board fault"
+      },
+      "fault_0007_drive_mainboard_communication_fault": {
+        "name": "Drive mainboard communication fault"
+      },
+      "fault_0008_compressor_overcurrent_alarm": {
+        "name": "Compressor overcurrent alarm"
+      },
+      "fault_0008_compressor_weak_magnetism_protection": {
+        "name": "Compressor weak magnetism protection"
+      },
+      "fault_0008_ipm_overheat_alarm": {
+        "name": "Ipm overheat alarm"
+      },
+      "fault_0008_pfc_overheat_alarm": {
+        "name": "Pfc overheat alarm"
+      },
+      "fault_0008_ac_input_overcurrent_alarm": {
+        "name": "Ac input overcurrent alarm"
+      },
+      "fault_0008_drive_eeprom_alarm": {
+        "name": "Drive eeprom alarm"
+      },
+      "fault_0008_eeprom_refresh": {
+        "name": "Eeprom refresh"
+      },
+      "fault_0008_temperature_sensing_limit": {
+        "name": "Temperature sensing limit"
+      },
+      "fault_0008_ac_undervoltage_frequency_limit": {
+        "name": "Ac undervoltage frequency limit"
+      },
+      "fault_0009_ipm_overheat_shutdown": {
+        "name": "Ipm overheat shutdown"
+      },
+      "fault_0009_compressor_phase_missing": {
+        "name": "Compressor phase missing"
+      },
+      "fault_0009_compressor_overload": {
+        "name": "Compressor overload"
+      },
+      "fault_0009_input_current_sampling_fault": {
+        "name": "Input current sampling fault"
+      },
+      "fault_0009_ipm_supply_voltage_fault": {
+        "name": "Ipm supply voltage fault"
+      },
+      "fault_0009_precharge_voltage_fault": {
+        "name": "Precharge voltage fault"
+      },
+      "fault_0009_drive_eeprom_fault": {
+        "name": "Drive eeprom fault"
+      },
+      "fault_0009_ac_overvoltage_fault": {
+        "name": "Ac overvoltage fault"
+      },
+      "fault_0009_microelectronics_fault": {
+        "name": "Microelectronics fault"
+      },
+      "fault_0009_compressor_type_code_fault": {
+        "name": "Compressor type code fault"
+      },
+      "fault_0009_current_sampling_overcurrent": {
+        "name": "Current sampling overcurrent"
       }
     },
     "button": {

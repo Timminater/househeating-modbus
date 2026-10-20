@@ -1,5 +1,27 @@
 # Testrapport — HouseHeating Modbus ontwikkelversies
 
+## Validatie voor release 0.5.0 — 20 oktober 2026
+
+| Controle | Resultaat |
+|---|---|
+| Protocolbibliotheek en berekeningen | 306 geslaagd |
+| Adaptercontracten | 16 geslaagd |
+| Echte Home Assistant 2026.10.1-runtime | 63 geslaagd |
+| Totaal | **385 geslaagd** |
+
+28 regressietests toegevoegd voor sensorfouten en herstel, ongeldige optionele
+registeradressen, herstel van leesblokken, time-outs en andere Modbus-excepties,
+alleen-lezen regelparameters, temperatuurdelers, behoud van de ruimtemodus en
+voorrang van gerapporteerde bedrijfsstatussen.
+
+Releasevalidatie: installatie-ZIP geïsoleerd geïmporteerd, HACS-metadata, JSON,
+vertalingen, vendorpariteit, volledige installatie-inhoud en brandafbeeldingen
+gecontroleerd. Python-compilatie en git diff --check geslaagd.
+De runtime geeft één bestaande upstream aiohttp-deprecationwaarschuwing.
+Geen fysieke Modbus-bus, warmtepomp, live HACS-installatie of GitHub Actions-run
+getest. Hieronder blijft de eerdere validatiehistorie behouden.
+
+
 ## Validatie voor release 0.4.0 — 15 oktober 2026
 
 Bronbasis: v0.2.0 op c6397fb, met de eerder lokaal ontwikkelde 0.3.0-

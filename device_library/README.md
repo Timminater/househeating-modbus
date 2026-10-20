@@ -1,4 +1,4 @@
-# househeating-modbus 0.4.0
+# househeating-modbus 0.5.0
 
 Backend-neutral protocol library for the HouseHeating HH-C3-12 / related SolarEast R290 family. This is an experimental, document-based implementation, not a manufacturer-certified driver. Physical-device validation is pending.
 

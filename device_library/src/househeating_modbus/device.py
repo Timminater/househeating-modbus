@@ -20,7 +20,10 @@ if TYPE_CHECKING:
 CORE_BLOCKS = ((0x0000, 10), (0x0040, 17), (0x0300, 8))
 FAST_OPTIONAL_BLOCKS = (("extra", 0x0051, 13), ("io", 0x0019, 8))
 EXTENDED_BLOCKS = (("zones", 0x0072, 12), ("dhw_config", 0x0130, 1),
-                   ("temperature_control", 0x0174, 1))
+                   ("temperature_control", 0x0174, 1),
+                   ("hysteresis", 0x011A, 2), ("target_stop", 0x0125, 1),
+                   ("dhw_hysteresis", 0x0160, 1),
+                   ("zone_2_setpoint", 0x0317, 1), ("zone_1_setpoint", 0x0319, 1))
 IDENTITY_BLOCK = (0x0360, 4)
 CURVE_BLOCK = (0x0313, 4)
 
@@ -86,6 +89,22 @@ class HeatPump:
                 window = ReadWindow(start, time(), monotonic())
                 sample_target.update({a: window for a in values})
                 return values
+            async def optional_read(name, address, count, target, sample_target, error_target):
+                try:
+                    target.update(await read(address, count, sample_target))
+                except CommunicationError as err:
+                    # Public modbus-connection exception response code; keep
+                    # the pure protocol test workflow independent of a backend.
+                    if count > 1 and getattr(err.__cause__, "exception_code", None) == 2:
+                        # Only a definite unsupported address justifies splitting.
+                        # Timeouts, corrupt replies and busy devices are not retried.
+                        half = count // 2
+                        await optional_read(name, address, half, target, sample_target, error_target)
+                        await optional_read(name, address + half, count - half, target, sample_target, error_target)
+                    else:
+                        error_target[name] = str(err)
+                        error_target[f"{name}_{address:04x}"] = str(err)
+
             try:
                 for address, count in CORE_BLOCKS:
                     raw.update(await read(address, count))
@@ -109,10 +128,7 @@ class HeatPump:
                 if self.config.curves and identity is not None and identity.protocol >= 130:
                     blocks.append(("curves", *CURVE_BLOCK))
                 for name, address, count in blocks:
-                    try:
-                        optional.update(await read(address, count, optional_samples))
-                    except CommunicationError as err:
-                        optional_errors[name] = str(err)
+                    await optional_read(name, address, count, optional, optional_samples, optional_errors)
                 self._slow_raw, self._slow_errors = optional, optional_errors
                 self._slow_samples = optional_samples
                 self._slow_at = monotonic()
@@ -126,10 +142,7 @@ class HeatPump:
             # making unsupported extras fatal to the mandatory polling cycle.
             if self.config.extended:
                 for name, address, count in FAST_OPTIONAL_BLOCKS:
-                    try:
-                        raw.update(await read(address, count))
-                    except CommunicationError as err:
-                        errors[name] = str(err)
+                    await optional_read(name, address, count, raw, samples, errors)
             if telemetry_enabled:
                 for address in (0x58, 0x5C, 0x5D):
                     if address not in raw:

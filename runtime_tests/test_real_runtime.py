@@ -178,3 +178,61 @@ async def test_concurrent_off_commands_do_not_restore_other_function(tmp_path):
                          HouseHeatingWaterHeater(coordinator).async_turn_off())
     assert unit.data[0x305] == 0
     assert unit.max_active == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode,expected", [(0, 0), (4, 4), (1, 1), (5, 5), (3, 3), (7, 7)])
+async def test_climate_turn_on_preserves_stopped_space_mode(tmp_path, mode, expected):
+    coordinator, unit = await harness(tmp_path)
+    unit.data.update({0x304: mode, 0x305: 0})
+    await HouseHeatingClimate(coordinator).async_turn_on()
+    assert unit.data[0x304] == expected and unit.data[0x305] == 1
+    assert unit.writes == [(0x305, 1)]
+
+
+@pytest.mark.asyncio
+async def test_climate_turn_on_restores_cooling_after_dhw_only(tmp_path):
+    coordinator, unit = await harness(tmp_path)
+    unit.data[0x304] = 4
+    climate = HouseHeatingClimate(coordinator)
+    await climate.async_turn_off()
+    assert unit.data[0x304] == 2
+    # Recreating the entity must not lose the remembered space mode.
+    await HouseHeatingClimate(coordinator).async_turn_on()
+    assert unit.data[0x304] == 4 and unit.data[0x305] == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status,power,expected", [(1 << 13, 1, "fault_shutdown"),
+    ((1 << 14) | (1 << 12), 1, "running"), (1 << 12, 1, "target_reached"),
+    (1 << 15, 1, "waiting"), (0, 1, "standby"), (0, 0, "off")])
+async def test_reported_operation_uses_status_not_temperature_prediction(tmp_path, status, power, expected):
+    from custom_components.househeating.sensor import ReportedOperationSensor
+    coordinator, unit = await harness(tmp_path)
+    unit.data.update({0: status, 0x305: power, 0x11a: 4, 0x11b: 3, 0x125: 0, 0x160: 5})
+    coordinator.force_optional = True
+    await coordinator.async_refresh()
+    sensor = ReportedOperationSensor(coordinator, "reported_operation")
+    assert sensor.available
+    assert sensor.native_value == expected
+    assert sensor.extra_state_attributes["heating_cooling_hysteresis"] == 4
+    assert sensor.extra_state_attributes["target_stop_behavior"] == 0
+    assert not unit.writes
+
+
+@pytest.mark.asyncio
+async def test_faulted_sensor_entity_unavailable_and_fault_entity_named(tmp_path):
+    from custom_components.househeating.sensor import HouseHeatingSensor
+    from custom_components.househeating.binary_sensor import FaultBinary
+    from custom_components.househeating._vendor.househeating_modbus.registers import BY_KEY
+    coordinator, unit = await harness(tmp_path)
+    unit.data[5] = 1 << 8
+    await coordinator.async_refresh()
+    sensor = HouseHeatingSensor(coordinator, BY_KEY["suction_temperature"])
+    fault = FaultBinary(coordinator, 5, 8, "suction_sensor_fault")
+    assert not sensor.available and sensor.native_value is None
+    assert fault.available and fault.is_on
+    assert fault.extra_state_attributes["manual_pdf_pages"] == [170, 171]
+    unit.data[5] = 0
+    await coordinator.async_refresh()
+    assert sensor.available and not fault.is_on

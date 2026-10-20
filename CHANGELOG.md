@@ -1,5 +1,16 @@
 # Wijzigingen
 
+## 0.5.0 — 20 oktober 2026
+
+- Sensorfouten onderdrukken ook de bijbehorende spoel-, zuig-, uitlaat- en economizertemperaturen; automatisch herstel na het verdwijnen van de fout.
+- Gedocumenteerde compressor- en aandrijvingsbits uit 0x0005–0x0009 hebben benoemde Nederlandse en Engelse diagnose-entiteiten.
+- Bedrijfsstatus op basis van gerapporteerde bits; P26/P27, P37 en P96 alleen-lezen zichtbaar.
+- Ruwe zonesetpoints als diagnostiek, zonder extra schrijfopdrachten of onbevestigde schaling.
+- Optionele leesblokken splitsen uitsluitend na een expliciet ongeldig registeradres; geen extra retries bij time-outs of andere fouten.
+- Thermostaat aanzetten behoudt de ruimtemodus, met sessiegeheugen na warmwater-only.
+- 385 tests geslaagd (306 protocol, 16 adaptercontracten, 63 echte HA-runtime); releasepakket geïsoleerd gecontroleerd.
+- Fysieke werking en live HACS-installatie blijven onbevestigd.
+
 ## 0.4.0 — 15 oktober 2026
 
 - Optionele waargenomen compressorstarts, draaiuren, dagsensoren en cyclusduur met persistente opslag.

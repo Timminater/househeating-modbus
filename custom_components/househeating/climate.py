@@ -78,7 +78,10 @@ class HouseHeatingClimate(HouseHeatingEntity, ClimateEntity):
         await self.coordinator.async_control(plan)
 
     async def async_turn_on(self):
-        await self.async_set_hvac_mode(HVACMode.HEAT)
+        def plan(snapshot):
+            mode = SPACE_MODES.get(snapshot.raw.get(0x304))
+            return space_plan(snapshot.raw, mode or self.coordinator.last_space_mode or "heat")
+        await self.coordinator.async_control(plan)
 
     async def async_turn_off(self):
         await self.async_set_hvac_mode(HVACMode.OFF)

@@ -148,7 +148,7 @@ def install(monkeypatch):
                      ('switch','SwitchEntity'),('binary_sensor','BinarySensorEntity'),('button','ButtonEntity')):
         extra={}
         if name=='sensor':
-            extra={'SensorDeviceClass':StrEnum('SensorDeviceClass',{x.upper():x for x in ('temperature','frequency','voltage','current','power','energy','enum','volume_flow_rate')}),
+            extra={'SensorDeviceClass':StrEnum('SensorDeviceClass',{x.upper():x for x in ('temperature','temperature_delta','frequency','voltage','current','power','energy','enum','volume_flow_rate')}),
                    'SensorStateClass':StrEnum('SensorStateClass',{'MEASUREMENT':'measurement'})}
         if name=='number':
             extra={'NumberDeviceClass':StrEnum('NumberDeviceClass',{'TEMPERATURE':'temperature'}),

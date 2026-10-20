@@ -289,8 +289,8 @@ def test_all_write_addresses_are_only_normal_user_settings():
 
 
 def test_fault_bit_labels_preserve_unknown_bits():
-    snapshot = Snapshot({2: 1 << 7, 5: 1 << 8})
-    assert snapshot.faults == ["inlet_sensor_fault", "word_0005_bit_8"]
+    snapshot = Snapshot({2: 1 << 7, 5: (1 << 8) | (1 << 15)})
+    assert snapshot.faults == ["inlet_sensor_fault", "suction_sensor_fault", "word_0005_bit_15"]
 
 
 @pytest.mark.asyncio
@@ -314,4 +314,93 @@ async def test_disabled_curves_cannot_be_written():
     device, unit = await device_ready(config=DeviceConfig(curves=False, verify_delay=0))
     with pytest.raises(WriteRejected):
         await device.async_write("heating_curve", "high_2")
+    assert not unit.writes
+
+
+@pytest.mark.parametrize("key,bit", [("outdoor_coil_temperature", 7),
+    ("suction_temperature", 8), ("discharge_temperature", 9),
+    ("economizer_inlet_temperature", 10), ("economizer_outlet_temperature", 11),
+    ("indoor_coil_temperature", 14)])
+def test_system_one_sensor_fault_suppression_and_recovery(key, bit):
+    raw = memory()
+    address = BY_KEY[key].address
+    raw[address] = 250
+    raw[5] = 1 << bit
+    assert Snapshot(raw).value(key, DeviceConfig()) is None
+    raw[5] = 0
+    assert Snapshot(raw).value(key, DeviceConfig()) == 25
+
+
+@pytest.mark.asyncio
+async def test_illegal_optional_address_preserves_neighbors_and_recovers():
+    class IllegalDataAddressError(Exception):
+        exception_code = 2
+
+    class PartialUnit(FakeUnit):
+        unsupported = True
+        async def read_holding_registers(self, address, count):
+            if self.unsupported and address <= 0x53 < address + count:
+                self.reads.append((address, count))
+                raise IllegalDataAddressError()
+            return await super().read_holding_registers(address, count)
+
+    unit = PartialUnit()
+    device = HeatPump(unit)
+    snapshot = await device.async_update()
+    assert snapshot.value("dhw_temperature", device.config) == 50
+    assert snapshot.value("input_power", device.config) == 2.57
+    assert 0x53 not in snapshot.raw and 0x53 not in snapshot.samples
+    assert "extra_0053" in snapshot.errors
+    assert not unit.writes
+    unit.unsupported = False
+    snapshot = await device.async_update()
+    assert 0x53 in snapshot.samples
+    assert "extra" not in snapshot.errors
+
+
+@pytest.mark.asyncio
+async def test_optional_timeout_does_not_trigger_split_retry():
+    unit = FakeUnit()
+    unit.fail_addresses.add(0x53)
+    device = HeatPump(unit)
+    snapshot = await device.async_update()
+    assert [(a, n) for a, n in unit.reads if 0x51 <= a <= 0x5d] == [(0x51, 13)]
+    assert snapshot.value("input_power", device.config) is None
+    assert "extra" in snapshot.errors
+
+
+@pytest.mark.parametrize("divisor", [1, 10])
+@pytest.mark.asyncio
+async def test_regulation_settings_are_read_only_and_not_temperature_scaled(divisor):
+    unit = FakeUnit(memory(divisor, divisor))
+    unit.data.update({0x11a: 4, 0x11b: 3, 0x125: 2, 0x160: 5, 0x317: 350, 0x319: 400})
+    device = HeatPump(unit, DeviceConfig(measurement_divisor=divisor, setpoint_divisor=divisor))
+    snapshot = await device.async_update()
+    for key, expected in [("heating_cooling_hysteresis", 4), ("floor_hysteresis", 3),
+                          ("target_stop_behavior", 2), ("dhw_hysteresis", 5),
+                          ("zone_2_setpoint_raw", 350), ("zone_1_setpoint_raw", 400)]:
+        assert snapshot.value(key, device.config) == expected
+        with pytest.raises(WriteRejected):
+            await device.async_write(key, 1)
+    assert not unit.writes
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("code", [1, 3, 4, 6])
+async def test_other_modbus_exceptions_never_trigger_split_reads(code):
+    class Rejected(Exception):
+        exception_code = code
+
+    class RejectingUnit(FakeUnit):
+        async def read_holding_registers(self, address, count):
+            if address == 0x51:
+                self.reads.append((address, count))
+                raise Rejected()
+            return await super().read_holding_registers(address, count)
+
+    unit = RejectingUnit()
+    snapshot = await HeatPump(unit).async_update()
+    assert [(a, n) for a, n in unit.reads if 0x51 <= a <= 0x5d] == [(0x51, 13)]
+    assert snapshot.raw[0x50] == 320 and 0x54 not in snapshot.raw
+    assert "extra" in snapshot.errors
     assert not unit.writes

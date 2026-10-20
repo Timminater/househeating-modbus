@@ -7,14 +7,21 @@
 Integratie voor de **HouseHeating HH-C3-12** via de gedeelde Modbus-verbinding
 van Home Assistant. Monitoring, verwarming/koeling, warmwater en normale setpoints.
 
-**Versie 0.4.0 · Home Assistant 2026.10.1 of nieuwer · experimenteel**
+**Versie 0.5.0 · Home Assistant 2026.10.1 of nieuwer · experimenteel**
 
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Timminater&repository=househeating-modbus&category=integration)
 
-357 softwaretests geslaagd met echte Home Assistant-klassen en gesimuleerde
+385 softwaretests geslaagd met echte Home Assistant-klassen en gesimuleerde
 Modbus-antwoorden. Werking op een fysieke warmtepomp is nog niet bevestigd.
 
-## Nieuw in 0.4.0
+## Nieuw in 0.5.0
+
+- Sensorfouten onderdrukken ook spoel-, zuig-, uitlaat- en economizermetingen.
+- Benoemde compressor-/aandrijvingsstoringen en een gerapporteerde bedrijfsstatus.
+- Alleen-lezen regelparameters en ruwe zonesetpoints; kleinere optionele leesblokken bij ongeldige adressen.
+- Aanzetten behoudt de ruimtemodus tijdens dezelfde integratiesessie.
+
+## Eerder toegevoegd in 0.4.0
 
 - Elektrische en geschatte thermische energie, COP/EER en meetdekking; externe elektriciteits- en thermische vermogensbronnen.
 - Waargenomen compressorstarts, draaiuren en cyclusduur; extra relais-/storingsentiteiten.
@@ -46,7 +53,7 @@ Voeg deze afzonderlijke repository toe, niet `Timminater/timminaters-integration
 
 ## Handmatig installeren
 
-1. Download `househeating_modbus_v0.4.0.zip` bij de
+1. Download `househeating_modbus_v0.5.0.zip` bij de
    [nieuwste release](https://github.com/Timminater/househeating-modbus/releases/latest).
 2. Pak het archief uit op je computer.
 3. Kopieer de volledige map `custom_components/househeating` naar de configuratiemap
@@ -173,3 +180,37 @@ python tools/validate_release.py
 Voer contracttests en runtime-tests afzonderlijk uit: contracttests vervangen
 HA-modules door testdoubles. [ci/test.yaml](ci/test.yaml) bevat een nog niet
 geactiveerd GitHub Actions-voorbeeld; lokaal uitvoeren kan wel.
+
+
+## Verbeterde diagnose (0.5.0)
+
+- Temperatuurfouten uit systeemfoutwoord `0x0005` onderdrukken nu ook de
+  bijbehorende spoel-, zuig-, uitlaat- en economizermetingen. Na herstel worden
+  de metingen vanzelf weer beschikbaar.
+- Gedocumenteerde compressor- en aandrijvingsbits uit `0x0005`–`0x0009`
+  hebben benoemde, standaard uitgeschakelde diagnose-entiteiten. Onbekende of
+  gereserveerde bits blijven zichtbaar als ruwe bitidentificatie.
+- De sensor **Bedrijfsstatus** toont gerapporteerd bedrijf, wachten, doel bereikt,
+  stand-by, uit of storingsuitschakeling. Dit is geen voorspelling van de regeling:
+  bij gelijktijdig bedrijf en doel bereikt blijft de status **In bedrijf**.
+- P26/P27, P37 en P96 worden bij ingeschakelde extra registers alleen-lezen
+  uitgelezen op het langzame interval. P26/P27 = 0 betekent automatische hysterese;
+  het is geen berekende hysterese van nul graden. Deze waarden zijn volgens de
+  parametertabel hele graden en gebruiken niet de temperatuurdelers.
+- De zonesetpoints `0x0317` en `0x0319` zijn alleen ruwe diagnosewaarden.
+  Temperatuur-, mengklep- en smart-gridmetingen blijven beschikbaar via de
+  bestaande sensoren. De onvolledige zonesetpointtabel en ontbrekende waardecodering
+  voor smart grid zijn geen basis voor extra schrijfopdrachten of verzonnen labels.
+- Bij een expliciet Modbus-antwoord **ongeldig registeradres** worden optionele
+  leesblokken opgesplitst. Ondersteunde buren blijven zo beschikbaar; een volgende
+  uitlezing probeert het oorspronkelijke blok opnieuw om herstel te herkennen.
+  Time-outs, verbindingsfouten en ongeldige antwoorden veroorzaken geen extra
+  splitsingspogingen. Verplichte leesblokken en schrijfbeveiligingen blijven gelijk.
+- Aanzetten van de thermostaat behoudt de actuele ruimtemodus, of herstelt de
+  laatst waargenomen ruimtemodus tijdens deze integratiesessie als alleen warmwater
+  overbleef na uitschakelen. Zonder zo'n waarneming is verwarmen de standaard.
+  Deze herinnering wordt niet over een herstart bewaard.
+
+De bestaande vrijgaveprocedure toont al ruwe en omgerekende temperaturen en
+setpoints naast elkaar voor vergelijking met het fysieke scherm. Bevestiging
+blijft vereist; de nieuwe diagnose geeft geen automatische bedieningsvrijgave.

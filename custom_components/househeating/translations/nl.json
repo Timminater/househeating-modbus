@@ -760,6 +760,35 @@
       },
       "thermal_power_external_reported": {
         "name": "Gerapporteerd vermogen externe warmtemeter"
+      },
+      "heating_cooling_hysteresis": {
+        "name": "Verwarming/koeling hysterese (P26)"
+      },
+      "floor_hysteresis": {
+        "name": "Vloerverwarming hysterese (P27)"
+      },
+      "dhw_hysteresis": {
+        "name": "Warmwater hysterese (P96)"
+      },
+      "target_stop_behavior": {
+        "name": "Stopgedrag compressor (P37)"
+      },
+      "zone_1_setpoint_raw": {
+        "name": "Zone 1 setpoint (ruw)"
+      },
+      "zone_2_setpoint_raw": {
+        "name": "Zone 2 setpoint (ruw)"
+      },
+      "reported_operation": {
+        "name": "Bedrijfsstatus",
+        "state": {
+          "off": "Uit",
+          "fault_shutdown": "Uitgeschakeld door storing",
+          "target_reached": "Doeltemperatuur bereikt",
+          "waiting": "Wachtstand",
+          "running": "In bedrijf",
+          "standby": "Stand-by"
+        }
       }
     },
     "number": {
@@ -1047,6 +1076,174 @@
       },
       "fault_0004_zone_1_sensor_fault": {
         "name": "Zone 1 sensorstoring"
+      },
+      "fault_0005_high_pressure_switch_fault": {
+        "name": "Hogedrukschakelaar defect"
+      },
+      "fault_0005_low_pressure_switch_fault": {
+        "name": "Lagedrukschakelaar defect"
+      },
+      "fault_0005_high_pressure_too_high": {
+        "name": "Hogedruk te hoog"
+      },
+      "fault_0005_high_pressure_too_low": {
+        "name": "Hogedruk te laag"
+      },
+      "fault_0005_discharge_pressure_too_high": {
+        "name": "Uitlaatdruk te hoog"
+      },
+      "fault_0005_current_protection": {
+        "name": "Stroombeveiliging"
+      },
+      "fault_0005_coil_pressure_too_high": {
+        "name": "Spoeldruk te hoog"
+      },
+      "fault_0005_outdoor_coil_sensor_fault": {
+        "name": "Buitenspoeltemperatuursensor defect"
+      },
+      "fault_0005_suction_sensor_fault": {
+        "name": "Zuigtemperatuursensor defect"
+      },
+      "fault_0005_discharge_sensor_fault": {
+        "name": "Uitlaattemperatuursensor defect"
+      },
+      "fault_0005_economizer_inlet_sensor_fault": {
+        "name": "Economizer-inlaattemperatuursensor defect"
+      },
+      "fault_0005_economizer_outlet_sensor_fault": {
+        "name": "Economizer-uitlaattemperatuursensor defect"
+      },
+      "fault_0005_fan_drive_communication_fault": {
+        "name": "Communicatiestoring ventilatoraandrijving"
+      },
+      "fault_0005_fan_fault": {
+        "name": "Ventilatorstoring"
+      },
+      "fault_0005_indoor_coil_sensor_fault": {
+        "name": "Binnenspoeltemperatuursensor defect"
+      },
+      "fault_0006_high_pressure_sensor_fault": {
+        "name": "Hogedruksensor defect"
+      },
+      "fault_0006_low_pressure_sensor_fault": {
+        "name": "Lagedruksensor defect"
+      },
+      "fault_0006_intermediate_pressure_switch_fault": {
+        "name": "Middendrukschakelaar defect"
+      },
+      "fault_0006_coil_temperature_too_high": {
+        "name": "Spoeltemperatuur te hoog"
+      },
+      "fault_0006_compressor_drive_communication_fault": {
+        "name": "Communicatiestoring compressoraandrijving"
+      },
+      "fault_0007_ipm_overcurrent_protection": {
+        "name": "IPM-overstroombeveiliging"
+      },
+      "fault_0007_compressor_drive_fault": {
+        "name": "Compressoraandrijving defect"
+      },
+      "fault_0007_compressor_overcurrent": {
+        "name": "Compressoroverstroom"
+      },
+      "fault_0007_drive_input_phase_missing": {
+        "name": "Ingangsfase aandrijving ontbreekt"
+      },
+      "fault_0007_ipm_current_sampling_fault": {
+        "name": "IPM-stroombemonstering defect"
+      },
+      "fault_0007_power_component_overheat_shutdown": {
+        "name": "Uitschakeling door oververhitting vermogenscomponenten"
+      },
+      "fault_0007_precharge_fault": {
+        "name": "Voorlading defect"
+      },
+      "fault_0007_dc_bus_overvoltage": {
+        "name": "DC-busoverspanning"
+      },
+      "fault_0007_dc_bus_undervoltage": {
+        "name": "DC-busonderspanning"
+      },
+      "fault_0007_ac_input_undervoltage": {
+        "name": "AC-ingangsonderspanning"
+      },
+      "fault_0007_ac_input_overvoltage": {
+        "name": "AC-ingangsoverspanning"
+      },
+      "fault_0007_input_voltage_sampling_fault": {
+        "name": "Ingangsspanningsbemonstering defect"
+      },
+      "fault_0007_dsp_pfc_communication_fault": {
+        "name": "Communicatiestoring DSP/PFC"
+      },
+      "fault_0007_drive_heatsink_sensor_fault": {
+        "name": "Koellichaamtemperatuursensor defect"
+      },
+      "fault_0007_dsp_communication_board_fault": {
+        "name": "Communicatiestoring DSP/communicatiebord"
+      },
+      "fault_0007_drive_mainboard_communication_fault": {
+        "name": "Communicatiestoring aandrijving/moederbord"
+      },
+      "fault_0008_compressor_overcurrent_alarm": {
+        "name": "Alarm compressoroverstroom"
+      },
+      "fault_0008_compressor_weak_magnetism_protection": {
+        "name": "Zwakke magnetische beveiliging compressor"
+      },
+      "fault_0008_ipm_overheat_alarm": {
+        "name": "Alarm IPM-oververhitting"
+      },
+      "fault_0008_pfc_overheat_alarm": {
+        "name": "Alarm PFC-oververhitting"
+      },
+      "fault_0008_ac_input_overcurrent_alarm": {
+        "name": "Alarm AC-ingangsoverstroom"
+      },
+      "fault_0008_drive_eeprom_alarm": {
+        "name": "Alarm EEPROM aandrijving"
+      },
+      "fault_0008_eeprom_refresh": {
+        "name": "EEPROM vernieuwen"
+      },
+      "fault_0008_temperature_sensing_limit": {
+        "name": "Temperatuursensatielimiet"
+      },
+      "fault_0008_ac_undervoltage_frequency_limit": {
+        "name": "Frequentiebegrenzing AC-onderspanning"
+      },
+      "fault_0009_ipm_overheat_shutdown": {
+        "name": "Uitschakeling door IPM-oververhitting"
+      },
+      "fault_0009_compressor_phase_missing": {
+        "name": "Compressorfase ontbreekt"
+      },
+      "fault_0009_compressor_overload": {
+        "name": "Compressoroverbelasting"
+      },
+      "fault_0009_input_current_sampling_fault": {
+        "name": "Ingangsstroombemonstering defect"
+      },
+      "fault_0009_ipm_supply_voltage_fault": {
+        "name": "IPM-voedingsspanning defect"
+      },
+      "fault_0009_precharge_voltage_fault": {
+        "name": "Voorlaadcircuitspanning defect"
+      },
+      "fault_0009_drive_eeprom_fault": {
+        "name": "EEPROM aandrijving defect"
+      },
+      "fault_0009_ac_overvoltage_fault": {
+        "name": "AC-overspanningsstoring"
+      },
+      "fault_0009_microelectronics_fault": {
+        "name": "Micro-elektronicastoring"
+      },
+      "fault_0009_compressor_type_code_fault": {
+        "name": "Compressortypecode defect"
+      },
+      "fault_0009_current_sampling_overcurrent": {
+        "name": "Overstroom stroombemonstering"
       }
     },
     "button": {

@@ -11,6 +11,7 @@ from .entity import HouseHeatingEntity
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = entry.runtime_data
     async_add_entities(HouseHeatingSensor(coordinator, r) for r in REGISTERS)
+    async_add_entities([ReportedOperationSensor(coordinator, "reported_operation")])
     if coordinator.monitoring is not None:
         async_add_entities(MonitoringSensor(coordinator, key, *description)
                            for key, description in MONITORING_SENSORS.items())
@@ -218,3 +219,46 @@ class OperationSensor(HouseHeatingEntity,SensorEntity):
                 "statistics_storage_error":manager.storage_error,
                 "control_target":manager.config.target,"automatic":manager.config.automatic,
                 "latched_stop":manager.blocked}
+
+
+class ReportedOperationSensor(HouseHeatingEntity, SensorEntity):
+    """Explain observed status without predicting the manufacturer's regulation."""
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_options = ["off", "fault_shutdown", "target_reached", "waiting", "running", "standby"]
+
+    @property
+    def native_value(self):
+        raw = self.coordinator.device.snapshot.raw
+        status = raw.get(0)
+        if status is None or raw.get(0x305) not in (0, 1):
+            return None
+        if status & (1 << 13):
+            return "fault_shutdown"
+        if raw[0x305] == 0:
+            return "off"
+        # Running wins over target-reached: the controller can keep running
+        # at minimum frequency after reaching its target (P37).
+        if status & (1 << 14):
+            return "running"
+        if status & (1 << 12):
+            return "target_reached"
+        if status & (1 << 15):
+            return "waiting"
+        return "standby"
+
+    @property
+    def available(self):
+        return super().available and self.native_value is not None
+
+    @property
+    def extra_state_attributes(self):
+        snapshot = self.coordinator.device.snapshot
+        config = self.coordinator.device.config
+        return {"measurement_origin": "reported_status_bits", "manual_pdf_pages": [100, 101, 102, 168, 169],
+                "active_faults": snapshot.faults,
+                "temperature_control_mode": snapshot.value("temperature_control_mode", config),
+                "target_stop_behavior": snapshot.value("target_stop_behavior", config),
+                "heating_cooling_hysteresis": snapshot.value("heating_cooling_hysteresis", config),
+                "floor_hysteresis": snapshot.value("floor_hysteresis", config),
+                "dhw_hysteresis": snapshot.value("dhw_hysteresis", config)}

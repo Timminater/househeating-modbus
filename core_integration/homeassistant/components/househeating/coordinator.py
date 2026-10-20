@@ -12,6 +12,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from househeating_modbus import HeatPump, HeatPumpError, Snapshot
+from househeating_modbus.controls import SPACE_MODES
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ class HouseHeatingCoordinator(DataUpdateCoordinator[Snapshot]):
         self._command_lock = asyncio.Lock()
         self.monitoring = None
         self.operation = None
+        self.last_space_mode = None
 
     async def _async_update_data(self) -> Snapshot:
         try:
@@ -45,6 +47,8 @@ class HouseHeatingCoordinator(DataUpdateCoordinator[Snapshot]):
             raise UpdateFailed(str(err)) from err
         finally:
             self.force_optional = False
+        if snapshot.layout_valid and snapshot.raw.get(0x304) in SPACE_MODES:
+            self.last_space_mode = SPACE_MODES[snapshot.raw[0x304]]
         if not snapshot.layout_valid:
             if self.monitoring is not None:
                 await self.monitoring.async_failure()

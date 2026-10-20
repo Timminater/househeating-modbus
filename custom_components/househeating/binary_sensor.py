@@ -80,4 +80,6 @@ class FaultBinary(HouseHeatingEntity,BinarySensorEntity):
 
     @property
     def extra_state_attributes(self):
-        return {"register":f"0x{self.address:04X}","bit":self.bit,"measurement_origin":"reported_fault_bit"}
+        return {"register":f"0x{self.address:04X}","bit":self.bit,
+                "manual_pdf_pages": [169] if self.address < 5 else [170, 171],
+                "measurement_origin":"reported_fault_bit"}
