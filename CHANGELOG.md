@@ -1,5 +1,57 @@
 # Wijzigingen
 
+## 0.6.0 — 11 november 2026
+
+Gewijzigd gedrag (controleer automatiseringen):
+
+- Thermostaatpresets zijn alleen nog het profiel: `standard`, `powerful`, `silent`.
+  De preset `floor_heating` is vervangen door de schakelaar **Vloerverwarming**
+  (`switch.*_floor_heating`). Een profielpreset verandert nooit meer de modus;
+  voorheen schakelde "standaard" vanuit stil + vloerverwarming ongemerkt naar
+  gewone verwarming, en zette "vloerverwarming" profiel en ruimteverwarming aan.
+- Vanuit een volledig uitgeschakelde warmtepomp start de thermostaat alleen
+  ruimteverwarming/koeling en de boiler alleen warmwater (modus 2). Een in het
+  modusregister onthouden andere functie gaat niet meer ongemerkt mee aan.
+
+Fouten opgelost:
+
+- Energiemonitoring stopte stil na een langer uitleesinterval: de opgeslagen
+  maximale meetouderdom bleef 90 s. De effectieve waarde is nu altijd minstens
+  twee uitleesintervallen; het formulier weigert een kortere waarde.
+- De automatische stooklijn bleef blijvend gestopt na een tijdelijke leesfout of
+  sensorfout, ook als er niets verstuurd was. Alleen een verstuurde maar
+  onbevestigde opdracht, een handmatige afwijking of een opslagfout stopt haar nog.
+- De automatische stooklijn deed bij elke evaluatie (elke 30 s, na elke poll en
+  bij elke wijziging van buiten-/PV-/accusensor) een volledige extra uitlezing
+  inclusief trage blokken en twee schijfschrijfacties. Nu alleen bij een
+  waarschijnlijk nodige wijziging.
+- Automatisch bedienen zonder uitleesbare ingebouwde curves (curves uit of
+  protocol < 130) gaf altijd `native_curve_active`; nu `native_curve_unknown`
+  en het formulier weigert deze combinatie.
+- De Modbus-buitentemperatuur voor de stooklijn werd bij een uitleesinterval
+  boven 120 s als verouderd geweigerd.
+- `climate.set_temperature` negeerde een meegegeven `hvac_mode`.
+- Bij een mislukt ontladen bleven stooklijn en statistieken gestopt.
+- De boiler was permanent onbeschikbaar met extra registers uitgeschakeld.
+- Een onleesbaar opslagbestand blokkeerde de hele integratie inclusief
+  bediening; nu alleen dat onderdeel, met een reparatiemelding. Het bestand
+  wordt niet overschreven.
+
+Prestaties en onderhoud:
+
+- Monitoring- en statistiektotalen worden elke vijf minuten en bij ontladen of
+  afsluiten opgeslagen in plaats van na elke meting (ca. 330 MB/dag bij 30 s).
+- Monitoringwaarden worden één keer per update berekend in plaats van per sensor.
+- Bronwijzigingen en watchdogtikken werken alleen de monitoringsensoren bij.
+- Geen per-poll-tijdstempels of aflopende seconden meer als attribuut; grote
+  detailattributen worden niet in de recorder opgeslagen.
+- Thermostaat toont `hvac_action` uit de gerapporteerde compressorstatus.
+- Firmwareversie in het apparaatregister volgt de warmtepomp.
+- Weigering vóór verzending heeft een eigen melding ("opdracht geweigerd").
+- Actievertalingen in strings.json; ruff lint/format; GitHub Actions actief.
+- 446 tests geslaagd (341 protocol, 16 adaptercontracten, 89 echte HA-runtime).
+- Fysieke werking en live HACS-installatie blijven onbevestigd.
+
 ## 0.5.0 — 20 oktober 2026
 
 - Sensorfouten onderdrukken ook de bijbehorende spoel-, zuig-, uitlaat- en economizertemperaturen; automatisch herstel na het verdwijnen van de fout.

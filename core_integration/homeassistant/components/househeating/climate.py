@@ -1,38 +1,67 @@
 """Space heating and cooling using the shared, verified control boundary."""
-from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode
+
+from homeassistant.components.climate import (
+    ATTR_HVAC_MODE,
+    ClimateEntity,
+    ClimateEntityFeature,
+    HVACAction,
+    HVACMode,
+)
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 
 from househeating_modbus.controls import SPACE_MODES, space_plan
 from househeating_modbus.models import WriteRejected
-from househeating_modbus.registers import PROFILE_OPTIONS
+from househeating_modbus.registers import MODE_OPTIONS, PROFILE_OPTIONS
 from .entity import HouseHeatingEntity
+
+SETPOINTS = {"cool": "cooling_setpoint", "heat": "heating_setpoint", "floor_heating": "floor_setpoint"}
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities([HouseHeatingClimate(entry.runtime_data)])
 
 
+def _resulting_mode(raw, commands):
+    mode = raw.get(0x304)
+    for key, value in commands:
+        if key == "operating_mode":
+            mode = MODE_OPTIONS[value]
+    return mode
+
+
 class HouseHeatingClimate(HouseHeatingEntity, ClimateEntity):
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT, HVACMode.COOL]
-    _attr_preset_modes = ["standard", "powerful", "silent", "floor_heating"]
+    # Presets are the global operating profile only. Floor heating is a separate
+    # switch: one preset list for two independent settings hid mode changes.
+    _attr_preset_modes = list(PROFILE_OPTIONS)
     _attr_target_temperature_step = 1.0
-    _attr_supported_features = (ClimateEntityFeature.TARGET_TEMPERATURE
-                                | ClimateEntityFeature.PRESET_MODE
-                                | ClimateEntityFeature.TURN_ON | ClimateEntityFeature.TURN_OFF)
+    _attr_supported_features = (
+        ClimateEntityFeature.TARGET_TEMPERATURE
+        | ClimateEntityFeature.PRESET_MODE
+        | ClimateEntityFeature.TURN_ON
+        | ClimateEntityFeature.TURN_OFF
+    )
 
     def __init__(self, coordinator):
         super().__init__(coordinator, "climate_main")
 
+    def _space_mode(self, mode=None):
+        if mode is None:
+            mode = self.coordinator.device.snapshot.raw.get(0x304)
+        return SPACE_MODES.get(mode)
+
     @property
     def _setpoint_key(self):
-        space = SPACE_MODES.get(self.coordinator.device.snapshot.raw.get(0x304))
-        return {"cool": "cooling_setpoint", "floor_heating": "floor_setpoint"}.get(space, "heating_setpoint")
+        return SETPOINTS.get(self._space_mode(), "heating_setpoint")
 
     @property
     def available(self):
-        return (super().available and self.coordinator.device.control_ready
-                and self.register_value(self._setpoint_key) is not None)
+        return (
+            super().available
+            and self.coordinator.device.control_ready
+            and self.register_value(self._setpoint_key) is not None
+        )
 
     @property
     def current_temperature(self):
@@ -61,26 +90,48 @@ class HouseHeatingClimate(HouseHeatingEntity, ClimateEntity):
         return HVACMode.COOL if raw.get(0x304) in (0, 4) else HVACMode.HEAT
 
     @property
+    def hvac_action(self):
+        """Reported compressor status; no prediction of the manufacturer's regulation."""
+        raw = self.coordinator.device.snapshot.raw
+        status, mode = raw.get(0), raw.get(0x304)
+        if status is None or mode is None:
+            return None
+        if self.hvac_mode == HVACMode.OFF:
+            return HVACAction.OFF
+        if not status & (1 << 14):
+            return HVACAction.IDLE
+        if mode == 0:
+            return HVACAction.COOLING
+        if mode in (1, 3, 5, 7):
+            return HVACAction.HEATING
+        # Mode 4: the running compressor may serve hot water or cooling.
+        return None
+
+    @property
     def preset_mode(self):
         profile = self.coordinator.device.snapshot.raw.get(0x307)
-        if profile in (1, 2):
-            return "powerful" if profile == 1 else "silent"
-        return "floor_heating" if self.coordinator.device.snapshot.raw.get(0x304) in (3, 7) else "standard"
+        return next((name for name, value in PROFILE_OPTIONS.items() if value == profile), None)
+
+    @property
+    def extra_state_attributes(self):
+        return {"floor_heating": self._space_mode() == "floor_heating"}
+
+    def _hvac_commands(self, snapshot, hvac_mode):
+        if hvac_mode not in self.hvac_modes:
+            raise WriteRejected("Unsupported HVAC mode")
+        requested = str(hvac_mode)
+        if hvac_mode == HVACMode.HEAT and snapshot.raw.get(0x304) in (3, 7):
+            requested = "floor_heating"
+        return space_plan(snapshot.raw, requested)
 
     async def async_set_hvac_mode(self, hvac_mode):
-        def plan(snapshot):
-            if hvac_mode not in self.hvac_modes:
-                raise WriteRejected("Unsupported HVAC mode")
-            requested = str(hvac_mode)
-            if hvac_mode == HVACMode.HEAT and snapshot.raw.get(0x304) in (3, 7):
-                requested = "floor_heating"
-            return space_plan(snapshot.raw, requested)
-        await self.coordinator.async_control(plan)
+        await self.coordinator.async_control(lambda snapshot: self._hvac_commands(snapshot, hvac_mode))
 
     async def async_turn_on(self):
         def plan(snapshot):
             mode = SPACE_MODES.get(snapshot.raw.get(0x304))
             return space_plan(snapshot.raw, mode or self.coordinator.last_space_mode or "heat")
+
         await self.coordinator.async_control(plan)
 
     async def async_turn_off(self):
@@ -88,18 +139,33 @@ class HouseHeatingClimate(HouseHeatingEntity, ClimateEntity):
 
     async def async_set_preset_mode(self, preset_mode):
         def plan(snapshot):
-            if preset_mode == "floor_heating":
-                # Select the space mode without implicitly switching a stopped pump on.
-                return [("operating_profile", "standard")] + [
-                    item for item in space_plan(snapshot.raw, "floor_heating") if item[0] != "power"]
             if preset_mode not in PROFILE_OPTIONS:
                 raise WriteRejected("Unsupported preset")
-            commands = [("operating_profile", preset_mode)]
-            if preset_mode == "standard" and snapshot.raw.get(0x304) in (3, 7):
-                commands += [item for item in space_plan(snapshot.raw, "heat") if item[0] != "power"]
-            return commands
+            return [("operating_profile", preset_mode)]
+
         await self.coordinator.async_control(plan)
 
     async def async_set_temperature(self, **kwargs):
-        if ATTR_TEMPERATURE in kwargs:
-            await self.coordinator.async_control(lambda snapshot: [(self._setpoint_key, kwargs[ATTR_TEMPERATURE])])
+        temperature = kwargs.get(ATTR_TEMPERATURE)
+        hvac_mode = kwargs.get(ATTR_HVAC_MODE)
+        if temperature is None and hvac_mode is None:
+            return
+
+        def plan(snapshot):
+            commands = self._hvac_commands(snapshot, hvac_mode) if hvac_mode is not None else []
+            if temperature is None:
+                return commands
+            # The setpoint belongs to the space mode that results from this
+            # command; switching off keeps the setpoint of the current space mode.
+            space = (
+                self._space_mode(_resulting_mode(snapshot.raw, commands))
+                or self._space_mode(snapshot.raw.get(0x304))
+                or self.coordinator.last_space_mode
+                or "heat"
+            )
+            power_on = [c for c in commands if c == ("power", True)]
+            others = [c for c in commands if c != ("power", True)]
+            # Set the temperature before switching the unit on.
+            return others + [(SETPOINTS[space], temperature)] + power_on
+
+        await self.coordinator.async_control(plan)

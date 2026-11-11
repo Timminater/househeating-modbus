@@ -1,11 +1,11 @@
 """UI setup, reconfiguration and explicit commissioning authorization."""
+
 from __future__ import annotations
 
 from dataclasses import replace
 from typing import Any
 
 import probatio as vol
-
 from homeassistant.components.modbus import async_get_temporary_unit
 from homeassistant.config_entries import ConfigFlow, OptionsFlowWithReload
 from homeassistant.core import callback
@@ -18,45 +18,69 @@ from .const import DEFAULT_NAME, DEFAULT_OPTIONS, DOMAIN
 
 
 def connection_schema(defaults: dict[str, Any]):
-    return vol.Schema({
-        vol.Required("name", default=defaults.get("name", DEFAULT_NAME)): str,
-        vol.Required("transport", default=defaults.get("transport", "rtu_tcp")): SelectSelector(
-            SelectSelectorConfig(options=["rtu_tcp", "tcp", "serial"],
-                                 mode=SelectSelectorMode.DROPDOWN, translation_key="transport")),
-        vol.Optional("host", default=defaults.get("host", "")): str,
-        vol.Optional("port", default=defaults.get("port", 502)): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
-        vol.Optional("serial_device", default=defaults.get("serial_device", "")): str,
-        vol.Required("unit_id", default=defaults.get("unit_id", 1)): vol.All(vol.Coerce(int), vol.Range(min=1, max=247)),
-        vol.Required("measurement_divisor", default=str(defaults.get("measurement_divisor", 10))): SelectSelector(
-            SelectSelectorConfig(options=["10", "1"], translation_key="temperature_divisor")),
-        vol.Required("setpoint_divisor", default=str(defaults.get("setpoint_divisor", 10))): SelectSelector(
-            SelectSelectorConfig(options=["10", "1"], translation_key="temperature_divisor")),
-    })
+    return vol.Schema(
+        {
+            vol.Required("name", default=defaults.get("name", DEFAULT_NAME)): str,
+            vol.Required("transport", default=defaults.get("transport", "rtu_tcp")): SelectSelector(
+                SelectSelectorConfig(
+                    options=["rtu_tcp", "tcp", "serial"], mode=SelectSelectorMode.DROPDOWN, translation_key="transport"
+                )
+            ),
+            vol.Optional("host", default=defaults.get("host", "")): str,
+            vol.Optional("port", default=defaults.get("port", 502)): vol.All(
+                vol.Coerce(int), vol.Range(min=1, max=65535)
+            ),
+            vol.Optional("serial_device", default=defaults.get("serial_device", "")): str,
+            vol.Required("unit_id", default=defaults.get("unit_id", 1)): vol.All(
+                vol.Coerce(int), vol.Range(min=1, max=247)
+            ),
+            vol.Required("measurement_divisor", default=str(defaults.get("measurement_divisor", 10))): SelectSelector(
+                SelectSelectorConfig(options=["10", "1"], translation_key="temperature_divisor")
+            ),
+            vol.Required("setpoint_divisor", default=str(defaults.get("setpoint_divisor", 10))): SelectSelector(
+                SelectSelectorConfig(options=["10", "1"], translation_key="temperature_divisor")
+            ),
+        }
+    )
 
 
 def options_schema(options):
-    return vol.Schema({
-        vol.Required("scan_interval", default=options["scan_interval"]): vol.All(vol.Coerce(int), vol.Range(min=10, max=3600)),
-        vol.Required("slow_interval", default=options["slow_interval"]): vol.All(vol.Coerce(int), vol.Range(min=10, max=3600)),
-        vol.Required("measurement_divisor", default=str(options["measurement_divisor"])): SelectSelector(
-            SelectSelectorConfig(options=["10", "1"], translation_key="temperature_divisor")),
-        vol.Required("setpoint_divisor", default=str(options["setpoint_divisor"])): SelectSelector(
-            SelectSelectorConfig(options=["10", "1"], translation_key="temperature_divisor")),
-        vol.Required("max_read", default=options["max_read"]): vol.All(vol.Coerce(int), vol.Range(min=1, max=100)),
-        vol.Required("spacing_ms", default=options["spacing_ms"]): vol.All(vol.Coerce(int), vol.Range(min=100, max=5000)),
-        vol.Required("timeout", default=options["timeout"]): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
-        vol.Required("extended", default=options["extended"]): bool,
-        vol.Required("curves", default=options["curves"]): bool,
-        vol.Required("max_heating", default=options["max_heating"]): vol.All(vol.Coerce(int), vol.Range(min=20, max=60)),
-        vol.Required("max_floor", default=options["max_floor"]): vol.All(vol.Coerce(int), vol.Range(min=20, max=60)),
-        vol.Required("max_dhw", default=options["max_dhw"]): vol.All(vol.Coerce(int), vol.Range(min=20, max=75)),
-        vol.Required("allow_control", default=options["allow_control"]): bool,
-    })
+    return vol.Schema(
+        {
+            vol.Required("scan_interval", default=options["scan_interval"]): vol.All(
+                vol.Coerce(int), vol.Range(min=10, max=3600)
+            ),
+            vol.Required("slow_interval", default=options["slow_interval"]): vol.All(
+                vol.Coerce(int), vol.Range(min=10, max=3600)
+            ),
+            vol.Required("measurement_divisor", default=str(options["measurement_divisor"])): SelectSelector(
+                SelectSelectorConfig(options=["10", "1"], translation_key="temperature_divisor")
+            ),
+            vol.Required("setpoint_divisor", default=str(options["setpoint_divisor"])): SelectSelector(
+                SelectSelectorConfig(options=["10", "1"], translation_key="temperature_divisor")
+            ),
+            vol.Required("max_read", default=options["max_read"]): vol.All(vol.Coerce(int), vol.Range(min=1, max=100)),
+            vol.Required("spacing_ms", default=options["spacing_ms"]): vol.All(
+                vol.Coerce(int), vol.Range(min=100, max=5000)
+            ),
+            vol.Required("timeout", default=options["timeout"]): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
+            vol.Required("extended", default=options["extended"]): bool,
+            vol.Required("curves", default=options["curves"]): bool,
+            vol.Required("max_heating", default=options["max_heating"]): vol.All(
+                vol.Coerce(int), vol.Range(min=20, max=60)
+            ),
+            vol.Required("max_floor", default=options["max_floor"]): vol.All(
+                vol.Coerce(int), vol.Range(min=20, max=60)
+            ),
+            vol.Required("max_dhw", default=options["max_dhw"]): vol.All(vol.Coerce(int), vol.Range(min=20, max=75)),
+            vol.Required("allow_control", default=options["allow_control"]): bool,
+        }
+    )
 
 
 async def probe(hass, data, options):
     """Use a temporary SHARED unit; never write anything during a probe."""
-    config = replace(device_config(options), extended=False, curves=False)
+    config = replace(device_config(options), extended=False, curves=False, hot_water=False)
     async with async_get_temporary_unit(hass, connection_params(data), data["unit_id"]) as unit:
         device = HeatPump(unit, config)
         await device.async_update()
@@ -90,8 +114,7 @@ class HouseHeatingConfigFlow(ConfigFlow, domain=DOMAIN):
             except (HeatPumpError, HomeAssistantError):
                 errors["base"] = "cannot_connect"
             else:
-                return self.async_create_entry(title=data["name"], data=data,
-                                               options=options)
+                return self.async_create_entry(title=data["name"], data=data, options=options)
         return self.async_show_form(step_id="user", data_schema=connection_schema(user_input or {}), errors=errors)
 
     async def async_step_reconfigure(self, user_input=None):
@@ -100,8 +123,10 @@ class HouseHeatingConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 data = normalize_connection(user_input)
-                if any(e.entry_id != entry.entry_id and e.data.get("connection_key") == data["connection_key"]
-                       for e in self._async_current_entries()):
+                if any(
+                    e.entry_id != entry.entry_id and e.data.get("connection_key") == data["connection_key"]
+                    for e in self._async_current_entries()
+                ):
                     return self.async_abort(reason="already_configured")
                 await probe(self.hass, data, dict(entry.options))
             except ValueError:
@@ -114,12 +139,16 @@ class HouseHeatingConfigFlow(ConfigFlow, domain=DOMAIN):
                     options[key] = int(user_input.get(key, options.get(key, 10)))
                 # Entity and device identities use entry_id, so an address change
                 # retains their history. No separate update listener is registered.
-                self.hass.config_entries.async_update_entry(entry, data=data, options=options,
-                                                           title=data["name"], unique_id=data["connection_key"])
+                self.hass.config_entries.async_update_entry(
+                    entry, data=data, options=options, title=data["name"], unique_id=data["connection_key"]
+                )
                 await self.hass.config_entries.async_reload(entry.entry_id)
                 return self.async_abort(reason="reconfigure_successful")
-        return self.async_show_form(step_id="reconfigure",
-                                    data_schema=connection_schema(user_input or (dict(entry.data) | dict(entry.options))), errors=errors)
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=connection_schema(user_input or (dict(entry.data) | dict(entry.options))),
+            errors=errors,
+        )
 
 
 class HouseHeatingOptionsFlow(OptionsFlowWithReload):
@@ -135,76 +164,118 @@ class HouseHeatingOptionsFlow(OptionsFlowWithReload):
         # an isolated monitoring route that never re-commissions device control.
         if user_input is not None:
             return await self.async_step_control(user_input)
-        return self.async_show_menu(step_id="init", menu_options=["control", "monitoring", "operation", "weather_curve"])
+        return self.async_show_menu(
+            step_id="init", menu_options=["control", "monitoring", "operation", "weather_curve"]
+        )
 
-    async def async_step_operation(self,user_input=None):
+    async def async_step_operation(self, user_input=None):
         if user_input is not None:
-            options=dict(self.config_entry.options)
-            options["operation_statistics"]=bool(user_input["operation_statistics"])
-            return self.async_create_entry(title="",data=options)
-        return self.async_show_form(step_id="operation",data_schema=vol.Schema({
-            vol.Required("operation_statistics",default=self.config_entry.options.get("operation_statistics",False)):bool}))
+            options = dict(self.config_entry.options)
+            options["operation_statistics"] = bool(user_input["operation_statistics"])
+            return self.async_create_entry(title="", data=options)
+        return self.async_show_form(
+            step_id="operation",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        "operation_statistics", default=self.config_entry.options.get("operation_statistics", False)
+                    ): bool
+                }
+            ),
+        )
 
-    async def async_step_weather_curve(self,user_input=None):
+    async def async_step_weather_curve(self, user_input=None):
         from dataclasses import asdict
-        from househeating_modbus.operation import CurveConfig
+
         from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
-        defaults=asdict(CurveConfig.from_options(self.config_entry.options))
-        defaults.pop("confirmation_id",None)
-        defaults["confirm_control"]=False
-        errors={}
+
+        from househeating_modbus.operation import CurveConfig
+
+        defaults = asdict(CurveConfig.from_options(self.config_entry.options))
+        defaults.pop("confirmation_id", None)
+        defaults["confirm_control"] = False
+        errors = {}
         if user_input is not None:
             try:
-                data=dict(user_input)
+                data = dict(user_input)
                 from uuid import uuid4
-                data["confirmation_id"]=uuid4().hex if data.get("automatic") else ""
-                for key in ("outdoor_entity","pv_entity","battery_entity"):
-                    data[key]=data.get(key) or ""
-                candidate=CurveConfig(**data)
-                options=dict(self.config_entry.options)
-                low,high=device_config(options).limits(candidate.target)
-                if candidate.water_min<low or candidate.water_max>high:
+
+                data["confirmation_id"] = uuid4().hex if data.get("automatic") else ""
+                for key in ("outdoor_entity", "pv_entity", "battery_entity"):
+                    data[key] = data.get(key) or ""
+                candidate = CurveConfig(**data)
+                options = dict(self.config_entry.options)
+                low, high = device_config(options).limits(candidate.target)
+                if candidate.water_min < low or candidate.water_max > high:
                     raise ValueError("Curve must stay inside commissioned limits")
-                if candidate.automatic and (not options.get("allow_control") or len(options.get("authorized_identity",[]))!=4):
+                if candidate.automatic and (
+                    not options.get("allow_control") or len(options.get("authorized_identity", [])) != 4
+                ):
                     raise ValueError("Commission control before enabling automatic weather compensation")
+                if candidate.automatic and (
+                    not (DEFAULT_OPTIONS | options).get("curves") or options["authorized_identity"][3] < 130
+                ):
+                    # The native curve must be provably off, which needs curve register readout.
+                    errors["base"] = "automatic_needs_native_curve"
+                    raise ValueError("Automatic weather compensation needs readable native curves")
                 from homeassistant.helpers import entity_registry as er
-                registry=er.async_get(self.hass)
-                for key,kind,units in (("outdoor_entity","temperature",("°C","°F","K")),
-                                       ("pv_entity","power",("W","kW")),("battery_entity","battery",("%",))):
-                    entity_id=getattr(candidate,key)
+
+                registry = er.async_get(self.hass)
+                for key, kind, units in (
+                    ("outdoor_entity", "temperature", ("°C", "°F", "K")),
+                    ("pv_entity", "power", ("W", "kW")),
+                    ("battery_entity", "battery", ("%",)),
+                ):
+                    entity_id = getattr(candidate, key)
                     if not entity_id:
                         continue
-                    registered=registry.async_get(entity_id)
-                    if registered and registered.platform==DOMAIN and (key!="outdoor_entity" or not registered.unique_id.endswith("_outdoor_temperature")):
+                    registered = registry.async_get(entity_id)
+                    if (
+                        registered
+                        and registered.platform == DOMAIN
+                        and (key != "outdoor_entity" or not registered.unique_id.endswith("_outdoor_temperature"))
+                    ):
                         raise ValueError("Derived HouseHeating sources cannot drive the curve")
-                    state=self.hass.states.get(entity_id)
-                    if state is None or state.attributes.get("device_class")!=kind or state.attributes.get("unit_of_measurement") not in units:
+                    state = self.hass.states.get(entity_id)
+                    if (
+                        state is None
+                        or state.attributes.get("device_class") != kind
+                        or state.attributes.get("unit_of_measurement") not in units
+                    ):
                         raise ValueError("Invalid source metadata")
-                options["weather_curve"]=asdict(candidate)
-                return self.async_create_entry(title="",data=options)
-            except (TypeError,ValueError):
-                errors["base"]="invalid_curve"
+                options["weather_curve"] = asdict(candidate)
+                return self.async_create_entry(title="", data=options)
+            except (TypeError, ValueError):
+                errors.setdefault("base", "invalid_curve")
                 defaults.update(user_input)
-        schema={}
-        for key,value in defaults.items():
+        schema = {}
+        for key, value in defaults.items():
             if key.endswith("_entity"):
-                kind={"outdoor_entity":"temperature","pv_entity":"power","battery_entity":"battery"}[key]
-                schema[vol.Optional(key,default=value or None)]=vol.Any(None,EntitySelector(
-                    EntitySelectorConfig(filter={"domain":"sensor","device_class":kind})))
-            elif key in ("enabled","automatic","confirm_control"):
-                schema[vol.Required(key,default=value)]=bool
-            elif key=="target":
-                schema[vol.Required(key,default=value)]=SelectSelector(SelectSelectorConfig(
-                    options=["heating_setpoint","floor_setpoint","dhw_setpoint","cooling_setpoint"],translation_key="curve_target"))
+                kind = {"outdoor_entity": "temperature", "pv_entity": "power", "battery_entity": "battery"}[key]
+                schema[vol.Optional(key, default=value or None)] = vol.Any(
+                    None, EntitySelector(EntitySelectorConfig(filter={"domain": "sensor", "device_class": kind}))
+                )
+            elif key in ("enabled", "automatic", "confirm_control"):
+                schema[vol.Required(key, default=value)] = bool
+            elif key == "target":
+                schema[vol.Required(key, default=value)] = SelectSelector(
+                    SelectSelectorConfig(
+                        options=["heating_setpoint", "floor_setpoint", "dhw_setpoint", "cooling_setpoint"],
+                        translation_key="curve_target",
+                    )
+                )
             else:
-                schema[vol.Required(key,default=value)]=vol.Coerce(float)
-        return self.async_show_form(step_id="weather_curve",data_schema=vol.Schema(schema),errors=errors)
+                schema[vol.Required(key, default=value)] = vol.Coerce(float)
+        return self.async_show_form(step_id="weather_curve", data_schema=vol.Schema(schema), errors=errors)
 
     async def async_step_monitoring(self, user_input=None):
         from dataclasses import asdict
-        from househeating_modbus.telemetry import MonitoringConfig
-        from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
+
         from homeassistant.helpers import entity_registry as er
+        from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
+
+        from househeating_modbus.telemetry import MonitoringConfig, minimum_max_age
+
         defaults = asdict(MonitoringConfig.from_options(DEFAULT_OPTIONS | dict(self.config_entry.options)))
         errors = {}
         if user_input is not None:
@@ -213,29 +284,41 @@ class HouseHeatingOptionsFlow(OptionsFlowWithReload):
                 for key in ("external_power", "external_energy", "external_heat_power"):
                     data[key] = data.get(key) or ""
                 candidate = MonitoringConfig(**data)
+                scan = (DEFAULT_OPTIONS | dict(self.config_entry.options))["scan_interval"]
+                if candidate.max_age < minimum_max_age(scan):
+                    errors["base"] = "max_age_too_short"
+                    raise ValueError("Maximum age must cover two polling intervals")
                 if candidate.enabled and (candidate.source == "external" or candidate.thermal_source == "external"):
                     registry = er.async_get(self.hass)
                     from .sensor import MONITORING_SENSORS
-                    sources=[]
-                    if candidate.source=="external":
-                        sources.extend(((candidate.external_power,"power"),(candidate.external_energy,"energy")))
-                    if candidate.thermal_source=="external":
-                        sources.append((candidate.external_heat_power,"power"))
-                        if candidate.source=="external" and candidate.external_heat_power==candidate.external_power:
+
+                    sources = []
+                    if candidate.source == "external":
+                        sources.extend(((candidate.external_power, "power"), (candidate.external_energy, "energy")))
+                    if candidate.thermal_source == "external":
+                        sources.append((candidate.external_heat_power, "power"))
+                        if candidate.source == "external" and candidate.external_heat_power == candidate.external_power:
                             raise ValueError("Electrical and thermal power must be different sources")
                     for entity_id, kind in sources:
                         if not entity_id:
                             continue
                         registered = registry.async_get(entity_id)
-                        if registered and registered.platform == DOMAIN and any(
-                            registered.unique_id.endswith("_" + key) for key in MONITORING_SENSORS):
+                        if (
+                            registered
+                            and registered.platform == DOMAIN
+                            and any(registered.unique_id.endswith("_" + key) for key in MONITORING_SENSORS)
+                        ):
                             raise ValueError("Derived sensors cannot be monitoring sources")
                         state = self.hass.states.get(entity_id)
                         units = ("W", "kW") if kind == "power" else ("Wh", "kWh")
-                        if state is None or state.attributes.get("device_class") != kind or state.attributes.get("unit_of_measurement") not in units:
+                        if (
+                            state is None
+                            or state.attributes.get("device_class") != kind
+                            or state.attributes.get("unit_of_measurement") not in units
+                        ):
                             raise ValueError("Invalid external source metadata")
             except (ValueError, TypeError):
-                errors["base"] = "invalid_monitoring"
+                errors.setdefault("base", "invalid_monitoring")
                 defaults.update(user_input)
             else:
                 # Merge only the monitoring namespace: preserve all control
@@ -248,14 +331,20 @@ class HouseHeatingOptionsFlow(OptionsFlowWithReload):
             if key in ("enabled", "thermal_confirmed"):
                 validator = bool
             elif key == "source":
-                validator = SelectSelector(SelectSelectorConfig(options=["modbus", "external"], translation_key="monitoring_source"))
+                validator = SelectSelector(
+                    SelectSelectorConfig(options=["modbus", "external"], translation_key="monitoring_source")
+                )
             elif key == "thermal_source":
-                validator=SelectSelector(SelectSelectorConfig(options=["hydraulic","external"],translation_key="thermal_source"))
+                validator = SelectSelector(
+                    SelectSelectorConfig(options=["hydraulic", "external"], translation_key="thermal_source")
+                )
             elif key in ("external_power", "external_energy", "external_heat_power"):
                 # Empty optional selectors are omitted, not serialized as invalid entities.
                 selector_kind = "energy" if key == "external_energy" else "power"
-                schema[vol.Optional(key, default=value or None)] = vol.Any(None, EntitySelector(
-                    EntitySelectorConfig(filter={"domain": "sensor", "device_class": selector_kind})))
+                schema[vol.Optional(key, default=value or None)] = vol.Any(
+                    None,
+                    EntitySelector(EntitySelectorConfig(filter={"domain": "sensor", "device_class": selector_kind})),
+                )
                 continue
             elif key == "fluid_reference":
                 validator = str
@@ -279,8 +368,15 @@ class HouseHeatingOptionsFlow(OptionsFlowWithReload):
                     identity = device.validate_for_control()
                     self._fingerprint = identity.fingerprint
                     rows = []
-                    for key in ("outdoor_temperature", "water_inlet_temperature", "water_outlet_temperature",
-                                "cooling_setpoint", "heating_setpoint", "dhw_setpoint", "floor_setpoint"):
+                    for key in (
+                        "outdoor_temperature",
+                        "water_inlet_temperature",
+                        "water_outlet_temperature",
+                        "cooling_setpoint",
+                        "heating_setpoint",
+                        "dhw_setpoint",
+                        "floor_setpoint",
+                    ):
                         reg = BY_KEY[key]
                         value = device.snapshot.value(key, device.config)
                         raw = device.snapshot.raw[reg.address]
@@ -317,6 +413,9 @@ class HouseHeatingOptionsFlow(OptionsFlowWithReload):
                     pending = dict(self._pending)
                     pending["authorized_identity"] = list(identity.fingerprint)
                     return self.async_create_entry(title="", data=pending)
-        return self.async_show_form(step_id="confirm_control",
-                                    data_schema=vol.Schema({vol.Required("confirm_values", default=False): bool}),
-                                    description_placeholders={"readings": self._preview}, errors=errors)
+        return self.async_show_form(
+            step_id="confirm_control",
+            data_schema=vol.Schema({vol.Required("confirm_values", default=False): bool}),
+            description_placeholders={"readings": self._preview},
+            errors=errors,
+        )

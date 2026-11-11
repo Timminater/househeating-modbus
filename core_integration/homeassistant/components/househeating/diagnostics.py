@@ -1,5 +1,7 @@
 """Redacted diagnostics for field validation."""
+
 from dataclasses import asdict
+
 from househeating_modbus import __version__ as library_version
 
 
@@ -37,4 +39,5 @@ async def async_get_config_entry_diagnostics(hass, entry):
         if isinstance(value, (list, tuple)):
             return [redact(v) for v in value]
         return value
+
     return redact(result)

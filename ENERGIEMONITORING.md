@@ -144,10 +144,18 @@ tellerdelta willekeurig over de twee perioden verdeeld.
   van twee tellerstappen wordt geweigerd. De laatste geaccepteerde baseline
   blijft bewaard; incidenten zijn zichtbaar in diagnostiek.
 - Totalen en periodeboekhouding worden per config entry via HA `Store`
-  opgeslagen **voordat** nieuwe totalen worden gepubliceerd. Bij opslagfout
-  blijven de laatste opgeslagen totalen zichtbaar en ontstaat geen
-  integratiebrug over het onzekere interval. Onbruikbare opgeslagen schema's
-  blokkeren herstel in plaats van zichtbare totalen stilzwijgend te wissen.
+  elke vijf minuten opgeslagen, en bij ontladen of afsluiten van Home Assistant.
+  Opslaan na elke meting sleet SD-kaarten. Bij een crash kunnen hooguit de
+  laatste minuten ontbreken; de volgende start markeert `restart_gap`.
+  Een opslagfout geeft status `storage_error`, verbergt momentane waarden en
+  wordt later opnieuw geprobeerd. Een onbruikbaar opgeslagen bestand wordt niet
+  overschreven of gewist: monitoring gaat voor die sessie uit en er verschijnt
+  een reparatiemelding, terwijl bediening en metingen blijven werken.
+- De maximale meetouderdom is altijd minstens twee uitleesintervallen. Een
+  lagere opgeslagen waarde wordt bij een langer uitleesinterval automatisch
+  verhoogd; het formulier weigert een kortere waarde.
+- Aflopende seconden staan niet als attribuut op de sensoren: elke wijziging
+  zou een nieuwe databaseregel opleveren. De dekkingssensoren tonen de verhouding.
 - Na herstart blijven totalen bestaan, maar begint vermogensintegratie met
   een nieuwe tijdsbaseline (`restart_gap`). Een geldige externe teller kan
   werkelijke elektriciteit over uitval herstellen; zonder warmtegegevens

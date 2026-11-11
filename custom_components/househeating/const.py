@@ -1,4 +1,5 @@
 """Integration constants."""
+
 DOMAIN = "househeating"
 DEFAULT_NAME = "HouseHeating"
 MINIMUM_HA = "2026.10.1"

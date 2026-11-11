@@ -81,7 +81,7 @@
       },
       "monitoring": {
         "title": "Energiemonitoring en geschat rendement",
-        "description": "Deze instellingen veranderen geen warmtepompinstellingen of bedieningsvrijgave. Thermische waarden zijn schattingen. Bevestig eerst temperatuur- en debietschaal. Waterbenadering: dichtheid 1 kg/L en soortelijke warmte 4,18 kJ/kg/K. Gebruik voor glycol gedocumenteerde fabrikantgegevens inclusief referentietemperatuur. De externe meter moet de bedoelde warmtepompverbruikers omvatten. Laat de optionele kWh-teller leeg om vermogen te integreren.",
+        "description": "Deze instellingen veranderen geen warmtepompinstellingen of bedieningsvrijgave. Thermische waarden zijn schattingen. Bevestig eerst temperatuur- en debietschaal. Waterbenadering: dichtheid 1 kg/L en soortelijke warmte 4,18 kJ/kg/K. Gebruik voor glycol gedocumenteerde fabrikantgegevens inclusief referentietemperatuur. De externe meter moet de bedoelde warmtepompverbruikers omvatten. Laat de optionele kWh-teller leeg om vermogen te integreren. De maximale meetouderdom moet minstens twee keer het uitleesinterval zijn; bij een langer uitleesinterval wordt hij automatisch verhoogd.",
         "data": {
           "enabled": "Energiemonitoring inschakelen",
           "thermal_confirmed": "Ik heb de temperatuur- en debietschaal tegen de installatie gecontroleerd",
@@ -145,7 +145,9 @@
       "commissioning_failed": "Vrijgave mislukt. Controleer de temperatuurdelers en of firmware, protocol en alle vier setpoints geldig uitleesbaar zijn. Bewaar eerst met bediening uit en bekijk de diagnostiek.",
       "confirmation_required": "Bevestig eerst de vergelijking met het fysieke bedieningsscherm.",
       "invalid_monitoring": "Controleer de bereiken, bron-eenheden en sensorkeuze. Externe metingen vereisen W/kW (vermogen) en Wh/kWh (energie). Eigen berekende sensoren zijn geen geldige bron.",
-      "invalid_curve": "Controleer bronnen, temperatuurbereiken en bedieningsvrijgave. Bevestig automatische bediening opnieuw."
+      "invalid_curve": "Controleer bronnen, temperatuurbereiken en bedieningsvrijgave. Bevestig automatische bediening opnieuw.",
+      "max_age_too_short": "De maximale meetouderdom moet minstens twee keer het uitleesinterval zijn.",
+      "automatic_needs_native_curve": "Automatische bediening vereist uitleesbare ingebouwde curves: schakel curves in bij de bedieningsopties en gebruik protocolversie 130 of nieuwer."
     }
   },
   "selector": {
@@ -748,9 +750,11 @@
           "control_locked": "Bediening vergrendeld",
           "inactive_mode": "Gekozen functie is niet actief",
           "native_curve_active": "Ingebouwde curve actief of niet actueel",
+          "native_curve_unknown": "Ingebouwde curve onbekend",
           "cooldown": "Wachttijd tussen opdrachten",
           "unchanged": "Geen wijziging nodig",
           "controlling": "Automatische regeling actief",
+          "control_unavailable": "Bediening tijdelijk niet beschikbaar",
           "manual_override": "Gestopt na handmatige afwijking",
           "write_error": "Gestopt na controle-, opslag- of opdrachtfout"
         }
@@ -906,6 +910,9 @@
     "switch": {
       "power": {
         "name": "Warmtepomp aan/uit"
+      },
+      "floor_heating": {
+        "name": "Vloerverwarming"
       }
     },
     "binary_sensor": {
@@ -1259,9 +1266,11 @@
             "state": {
               "standard": "Standaard",
               "powerful": "Krachtig",
-              "silent": "Stil",
-              "floor_heating": "Vloerverwarming"
+              "silent": "Stil"
             }
+          },
+          "floor_heating": {
+            "name": "Vloerverwarming"
           }
         }
       }
@@ -1281,6 +1290,31 @@
     },
     "command_failed": {
       "message": "Opdracht niet bevestigd: {error}"
+    },
+    "command_rejected": {
+      "message": "Opdracht geweigerd vóór verzending: {error}"
+    }
+  },
+  "issues": {
+    "storage_invalid_monitoring": {
+      "title": "Opgeslagen energietotalen van {title} zijn onleesbaar",
+      "description": "Energiemonitoring is voor deze sessie uitgeschakeld omdat {file} niet gelezen kon worden. Bediening en metingen blijven werken. Zet het bestand terug uit een back-up, of verwijder het om met nieuwe totalen te beginnen, en herstart Home Assistant."
+    },
+    "storage_invalid_operation": {
+      "title": "Opgeslagen compressorstatistieken van {title} zijn onleesbaar",
+      "description": "Compressorstatistieken zijn voor deze sessie uitgeschakeld omdat {file} niet gelezen kon worden. Zet het bestand terug uit een back-up, of verwijder het om met nieuwe statistieken te beginnen, en herstart Home Assistant."
+    }
+  },
+  "services": {
+    "generate_dashboard": {
+      "name": "Dashboard samenstellen",
+      "description": "Geeft dashboardconfiguratie terug met de actuele entiteitsnamen. Wijzigt geen bestaand dashboard.",
+      "fields": {
+        "entry_id": {
+          "name": "Integratie",
+          "description": "De HouseHeating-configuratie."
+        }
+      }
     }
   }
 }

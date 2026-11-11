@@ -1,6 +1,8 @@
 """Exact operating modes and protocol-gated native curves."""
+
 from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.entity import EntityCategory
+
 from househeating_modbus import SELECTS
 from .entity import HouseHeatingControlEntity
 

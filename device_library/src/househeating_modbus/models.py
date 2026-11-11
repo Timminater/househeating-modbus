@@ -1,9 +1,10 @@
 """Typed snapshots and validation, independent of any application or backend."""
+
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from math import isfinite
-from typing import Mapping
 
 from .registers import BY_KEY, FAULT_LABELS, MODE_OPTIONS, PROFILE_OPTIONS, Register
 
@@ -38,17 +39,31 @@ class DeviceConfig:
     max_floor: float = 45.0
     max_dhw: float = 65.0
     verify_delay: float = 0.2
+    # Read the hot-water tank temperature and sensor configuration even when
+    # the extended register groups are disabled; the water heater needs them.
+    hot_water: bool = True
 
     def __post_init__(self) -> None:
-        if (type(self.measurement_divisor) is not int or type(self.setpoint_divisor) is not int
-                or self.measurement_divisor not in (1, 10) or self.setpoint_divisor not in (1, 10)):
+        if type(self.hot_water) is not bool:
+            raise ValueError("hot_water must be a boolean")
+        if (
+            type(self.measurement_divisor) is not int
+            or type(self.setpoint_divisor) is not int
+            or self.measurement_divisor not in (1, 10)
+            or self.setpoint_divisor not in (1, 10)
+        ):
             raise ValueError("Temperature divisors must be 1 or 10")
         if type(self.max_read) is not int or not 1 <= self.max_read <= 100:
             raise ValueError("max_read must be between 1 and 100")
-        for name, lo, hi in (("spacing", .1, 5), ("timeout", 1, 30),
-                             ("slow_interval", 10, 3600), ("max_heating", 20, 60),
-                             ("max_floor", 20, 60), ("max_dhw", 20, 75),
-                             ("verify_delay", 0, 5)):
+        for name, lo, hi in (
+            ("spacing", 0.1, 5),
+            ("timeout", 1, 30),
+            ("slow_interval", 10, 3600),
+            ("max_heating", 20, 60),
+            ("max_floor", 20, 60),
+            ("max_dhw", 20, 75),
+            ("verify_delay", 0, 5),
+        ):
             value = getattr(self, name)
             if not isfinite(value) or not lo <= value <= hi:
                 raise ValueError(f"{name} must be within {lo}..{hi}")
@@ -56,8 +71,11 @@ class DeviceConfig:
     def limits(self, key: str) -> tuple[float, float]:
         r = BY_KEY[key]
         assert r.minimum is not None and r.maximum is not None
-        cap = {"heating_setpoint": self.max_heating, "floor_setpoint": self.max_floor,
-               "dhw_setpoint": self.max_dhw}.get(key, r.maximum)
+        cap = {
+            "heating_setpoint": self.max_heating,
+            "floor_setpoint": self.max_floor,
+            "dhw_setpoint": self.max_dhw,
+        }.get(key, r.maximum)
         return r.minimum, min(r.maximum, cap)
 
 
@@ -117,6 +135,7 @@ class Identity:
 @dataclass(frozen=True)
 class ReadWindow:
     """Actual successful read interval; cached values retain their original time."""
+
     start: float
     end: float
     monotonic_end: float
@@ -140,9 +159,11 @@ class Snapshot:
     @property
     def layout_valid(self) -> bool:
         # A compatibility check, NOT a manufacturer or serial-number identity.
-        return (self.raw.get(0x0304) in MODE_OPTIONS.values()
-                and self.raw.get(0x0305) in (0, 1)
-                and self.raw.get(0x0307) in PROFILE_OPTIONS.values())
+        return (
+            self.raw.get(0x0304) in MODE_OPTIONS.values()
+            and self.raw.get(0x0305) in (0, 1)
+            and self.raw.get(0x0307) in PROFILE_OPTIONS.values()
+        )
 
     @property
     def faults(self) -> list[str]:

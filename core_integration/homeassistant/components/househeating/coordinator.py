@@ -1,9 +1,10 @@
 """Coordinated polling and verified user commands."""
+
 from __future__ import annotations
 
-from datetime import timedelta
 import asyncio
 import logging
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -11,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from househeating_modbus import HeatPump, HeatPumpError, Snapshot
+from househeating_modbus import HeatPump, HeatPumpError, Snapshot, WriteRejected
 from househeating_modbus.controls import SPACE_MODES
 from .const import DOMAIN
 
@@ -19,10 +20,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class HouseHeatingCoordinator(DataUpdateCoordinator[Snapshot]):
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, device: HeatPump,
-                 interval: int) -> None:
-        super().__init__(hass, _LOGGER, name=DOMAIN, config_entry=entry,
-                         update_interval=timedelta(seconds=interval))
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, device: HeatPump, interval: int) -> None:
+        super().__init__(hass, _LOGGER, name=DOMAIN, config_entry=entry, update_interval=timedelta(seconds=interval))
         self.entry = entry
         self.device = device
         self.force_optional = False
@@ -40,24 +39,26 @@ class HouseHeatingCoordinator(DataUpdateCoordinator[Snapshot]):
                 kwargs["diagnostics_enabled"] = True
             snapshot = await self.device.async_update(**kwargs)
         except HeatPumpError as err:
-            if self.monitoring is not None:
-                await self.monitoring.async_failure()
-            if self.operation is not None:
-                await self.operation.async_snapshot(None)
+            await self._async_report_failure()
             raise UpdateFailed(str(err)) from err
         finally:
             self.force_optional = False
-        if snapshot.layout_valid and snapshot.raw.get(0x304) in SPACE_MODES:
-            self.last_space_mode = SPACE_MODES[snapshot.raw[0x304]]
         if not snapshot.layout_valid:
-            if self.monitoring is not None:
-                await self.monitoring.async_failure()
+            await self._async_report_failure()
             raise UpdateFailed("The returned mode/profile/power registers do not match the documented layout")
+        if snapshot.raw.get(0x304) in SPACE_MODES:
+            self.last_space_mode = SPACE_MODES[snapshot.raw[0x304]]
         if self.monitoring is not None:
             await self.monitoring.async_snapshot(snapshot)
         if self.operation is not None:
             await self.operation.async_snapshot(snapshot)
         return snapshot
+
+    async def _async_report_failure(self) -> None:
+        if self.monitoring is not None:
+            await self.monitoring.async_failure()
+        if self.operation is not None:
+            await self.operation.async_snapshot(None)
 
     async def async_write(self, key: str, value: Any) -> None:
         await self.async_control(lambda snapshot: [(key, value)])
@@ -84,8 +85,11 @@ class HouseHeatingCoordinator(DataUpdateCoordinator[Snapshot]):
         except HeatPumpError as err:
             # Never present an unconfirmed write as success. Refresh without resending.
             await self.async_refresh()
-            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="command_failed",
-                                     translation_placeholders={"error": str(err)}) from err
+            # A rejection happens before transmission; anything else may have reached the unit.
+            key = "command_rejected" if isinstance(err, WriteRejected) else "command_failed"
+            raise HomeAssistantError(
+                translation_domain=DOMAIN, translation_key=key, translation_placeholders={"error": str(err)}
+            ) from err
         await self.async_refresh()
 
     async def async_refresh_all(self) -> None:

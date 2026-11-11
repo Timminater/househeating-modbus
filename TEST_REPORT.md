@@ -1,5 +1,30 @@
 # Testrapport — HouseHeating Modbus ontwikkelversies
 
+## Validatie voor release 0.6.0 — 11 november 2026
+
+| Controle | Resultaat |
+|---|---|
+| Protocolbibliotheek en berekeningen | 341 geslaagd |
+| Adaptercontracten | 16 geslaagd |
+| Echte Home Assistant 2026.10.1-runtime | 89 geslaagd |
+| Totaal | **446 geslaagd** |
+
+61 tests toegevoegd of aangepast voor: aanzetten vanuit een uitgeschakelde
+warmtepomp, de vloerverwarmingsschakelaar en profielpresets, `hvac_action`,
+`set_temperature` met HVAC-modus, de meetouderdomsgrens bij lange
+uitleesintervallen, periodiek opslaan en opslagfouten, eenmalige
+waardenberekening, attributen zonder tijdafhankelijke waarden, meldingen alleen
+aan monitoringsensoren, stooklijn zonder busverkeer zonder nodige wijziging,
+geen blijvende stop zonder verzending, onleesbare curves, mislukt ontladen,
+onleesbare opslag met reparatiemelding en de boiler zonder extra registers.
+
+Ruff lint en opmaak geslaagd. Releasevalidatie: installatie-ZIP geïsoleerd
+geïmporteerd, HACS-metadata, JSON, vertalingen, vendorpariteit en
+brandafbeeldingen gecontroleerd. GitHub Actions is actief
+(`.github/workflows/test.yaml`). Geen fysieke Modbus-bus, warmtepomp of live
+HACS-installatie getest.
+
+
 ## Validatie voor release 0.5.0 — 20 oktober 2026
 
 | Controle | Resultaat |
@@ -167,8 +192,8 @@ Geen echte warmtepomp/gateway, elektrische RS485- of netwerkframetest,
 volledige HA-installatie met UI/registry-lifecycle, of live HACS-installatie uitgevoerd.
 De HACS-repository-indeling en zelfstandige installatiebestanden zijn gecontroleerd;
 dit is geen claim dat HACS op de installatie van de gebruiker is bediend.
-GitHub Actions is nog niet actief wegens ontbrekende workflow-scope; het voorbeeld
-staat in `ci/test.yaml`. Geen hassfest- of standaard-HACS-catalogusgoedkeuring geclaimd.
+Vanaf 0.6.0 draait GitHub Actions via `.github/workflows/test.yaml`.
+Geen hassfest- of standaard-HACS-catalogusgoedkeuring geclaimd.
 
 ## Historische validatie van v0.1.0
 

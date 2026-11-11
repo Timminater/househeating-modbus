@@ -1,22 +1,44 @@
 """In-memory ModbusUnit test double. No networking or frame simulation."""
+
 import asyncio
 
 
 def memory(divisor=10, measurement_divisor=10, protocol=130):
     data = {}
-    for start, count in ((0, 10), (0x40, 30), (0x300, 8), (0x360, 4),
-                         (0x313, 4), (0x72, 12), (0x19, 8)):
+    for start, count in ((0, 10), (0x40, 30), (0x300, 8), (0x360, 4), (0x313, 4), (0x72, 12), (0x19, 8)):
         data.update({a: 0 for a in range(start, start + count)})
     for a in range(0x47, 0x53):
         data[a] = int(30 * measurement_divisor)
-    data.update({0x40: 35, 0x41: 600, 0x44: 230, 0x45: 42, 0x46: 50,
-                 0x4A: int(8 * measurement_divisor), 0x4F: int(28 * measurement_divisor),
-                 0x50: int(32 * measurement_divisor), 0x54: int(50 * measurement_divisor),
-                 0x58: 123, 0x5C: 257, 0x74: int(31 * measurement_divisor),
-                 0x300: 12 * divisor, 0x301: 35 * divisor, 0x302: 55 * divisor,
-                 0x303: 35 * divisor, 0x304: 7, 0x305: 1, 0x306: 20 * divisor,
-                 0x307: 0, 0x360: 404, 0x361: 0, 0x362: 1, 0x363: protocol,
-                 0x130: 1, 0x174: 1})
+    data.update(
+        {
+            0x40: 35,
+            0x41: 600,
+            0x44: 230,
+            0x45: 42,
+            0x46: 50,
+            0x4A: int(8 * measurement_divisor),
+            0x4F: int(28 * measurement_divisor),
+            0x50: int(32 * measurement_divisor),
+            0x54: int(50 * measurement_divisor),
+            0x58: 123,
+            0x5C: 257,
+            0x74: int(31 * measurement_divisor),
+            0x300: 12 * divisor,
+            0x301: 35 * divisor,
+            0x302: 55 * divisor,
+            0x303: 35 * divisor,
+            0x304: 7,
+            0x305: 1,
+            0x306: 20 * divisor,
+            0x307: 0,
+            0x360: 404,
+            0x361: 0,
+            0x362: 1,
+            0x363: protocol,
+            0x130: 1,
+            0x174: 1,
+        }
+    )
     return data
 
 
@@ -45,8 +67,10 @@ class FakeUnit:
 
     def on_connection_lost(self, callback):
         self.callback = callback
+
         def unsubscribe():
             self.callback = None
+
         return unsubscribe
 
     async def read_holding_registers(self, address, count):

@@ -1,13 +1,21 @@
 import asyncio
-from dataclasses import replace
 
 import pytest
+from fake_unit import FakeUnit, memory
 
-from househeating_modbus import (BY_KEY, DeviceConfig, HeatPump, Snapshot, CommunicationError,
-                                VerificationError, WriteRejected, SELECTS, SETPOINT_KEYS)
+from househeating_modbus import (
+    BY_KEY,
+    SELECTS,
+    SETPOINT_KEYS,
+    CommunicationError,
+    DeviceConfig,
+    HeatPump,
+    Snapshot,
+    VerificationError,
+    WriteRejected,
+)
 from househeating_modbus.models import signed16
 from househeating_modbus.registers import WRITABLE_ADDRESSES
-from fake_unit import FakeUnit, memory
 
 
 async def device_ready(config=None, unit=None):
@@ -25,7 +33,7 @@ async def test_startup_is_read_only_and_pacing_delegated():
     device = HeatPump(unit)
     result = await device.async_update()
     assert not unit.writes
-    assert unit.spacing == .12 and unit.timeout == 5
+    assert unit.spacing == 0.12 and unit.timeout == 5
     assert result.layout_valid
     assert not device.control_ready
     assert result.value("water_outlet_temperature", device.config) == 32
@@ -50,12 +58,19 @@ def test_signed(raw, expected):
 
 
 def test_temperature_negative_point_one_not_sentinel():
-    assert Snapshot({0x4A: 65535}).value("outdoor_temperature", DeviceConfig()) == -.1
+    assert Snapshot({0x4A: 65535}).value("outdoor_temperature", DeviceConfig()) == -0.1
     assert Snapshot({0x4A: 32768}).value("outdoor_temperature", DeviceConfig()) is None
 
 
-@pytest.mark.parametrize("address,bit,key", [(2, 7, "water_inlet_temperature"), (2, 13, "water_outlet_temperature"),
-                                            (4, 8, "buffer_temperature"), (2, 6, "dhw_temperature")])
+@pytest.mark.parametrize(
+    "address,bit,key",
+    [
+        (2, 7, "water_inlet_temperature"),
+        (2, 13, "water_outlet_temperature"),
+        (4, 8, "buffer_temperature"),
+        (2, 6, "dhw_temperature"),
+    ],
+)
 def test_faulted_temperature_is_not_exposed(address, bit, key):
     raw = memory()
     raw[BY_KEY[key].address] = 350
@@ -63,8 +78,16 @@ def test_faulted_temperature_is_not_exposed(address, bit, key):
     assert Snapshot(raw).value(key, DeviceConfig()) is None
 
 
-@pytest.mark.parametrize("key,value", [("factory_reset", 1), ("compressor_force", 80), ("0x0330", 8192),
-                                       ("water_outlet_temperature", 30), ("buffer_temperature", 30)])
+@pytest.mark.parametrize(
+    "key,value",
+    [
+        ("factory_reset", 1),
+        ("compressor_force", 80),
+        ("0x0330", 8192),
+        ("water_outlet_temperature", 30),
+        ("buffer_temperature", 30),
+    ],
+)
 @pytest.mark.asyncio
 async def test_no_access_to_service_or_measurement_writes(key, value):
     device, unit = await device_ready()
@@ -83,12 +106,25 @@ async def test_locked_controls_do_no_io():
     assert not unit.writes and not unit.reads
 
 
-@pytest.mark.parametrize("key,value", [("heating_setpoint", 61), ("floor_setpoint", 46), ("dhw_setpoint", 66),
-                                       ("cooling_setpoint", 6), ("floor_setpoint", 19),
-                                       ("heating_setpoint", float("nan")), ("heating_setpoint", float("inf")),
-                                       ("heating_setpoint", 35.5), ("floor_setpoint", True),
-                                       ("power", 2), ("power", "on"), ("operating_mode", "reserve"),
-                                       ("operating_profile", "turbo"), ("heating_curve", "high_9")])
+@pytest.mark.parametrize(
+    "key,value",
+    [
+        ("heating_setpoint", 61),
+        ("floor_setpoint", 46),
+        ("dhw_setpoint", 66),
+        ("cooling_setpoint", 6),
+        ("floor_setpoint", 19),
+        ("heating_setpoint", float("nan")),
+        ("heating_setpoint", float("inf")),
+        ("heating_setpoint", 35.5),
+        ("floor_setpoint", True),
+        ("power", 2),
+        ("power", "on"),
+        ("operating_mode", "reserve"),
+        ("operating_profile", "turbo"),
+        ("heating_curve", "high_9"),
+    ],
+)
 @pytest.mark.asyncio
 async def test_reject_invalid_values(key, value):
     device, unit = await device_ready()
@@ -256,9 +292,10 @@ async def test_curve_cache_does_not_revert_verified_result():
 @pytest.mark.asyncio
 async def test_concurrent_poll_and_commands_are_serialized():
     device, unit = await device_ready()
-    unit.delay = .001
-    await asyncio.gather(device.async_update(), device.async_write("heating_setpoint", 40),
-                         device.async_write("floor_setpoint", 38))
+    unit.delay = 0.001
+    await asyncio.gather(
+        device.async_update(), device.async_write("heating_setpoint", 40), device.async_write("floor_setpoint", 38)
+    )
     assert unit.max_active == 1
     assert len(unit.writes) == 2
 
@@ -268,24 +305,35 @@ async def test_cancellation_is_propagated():
     unit = FakeUnit()
     unit.delay = 10
     task = asyncio.create_task(HeatPump(unit).async_update())
-    await asyncio.sleep(.001)
+    await asyncio.sleep(0.001)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
     assert not unit.writes
 
 
-@pytest.mark.parametrize("kwargs", [{"measurement_divisor": 2}, {"setpoint_divisor": 0},
-                                    {"max_read": 101}, {"max_read": 0}, {"spacing": .01},
-                                    {"max_floor": 65}, {"max_dhw": 76}, {"timeout": float("nan")}])
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"measurement_divisor": 2},
+        {"setpoint_divisor": 0},
+        {"max_read": 101},
+        {"max_read": 0},
+        {"spacing": 0.01},
+        {"max_floor": 65},
+        {"max_dhw": 76},
+        {"timeout": float("nan")},
+    ],
+)
 def test_invalid_configuration(kwargs):
     with pytest.raises(ValueError):
         DeviceConfig(**kwargs)
 
 
 def test_all_write_addresses_are_only_normal_user_settings():
-    assert WRITABLE_ADDRESSES == frozenset((0x300, 0x301, 0x302, 0x303, 0x304,
-                                          0x305, 0x307, 0x313, 0x314, 0x315, 0x316))
+    assert WRITABLE_ADDRESSES == frozenset(
+        (0x300, 0x301, 0x302, 0x303, 0x304, 0x305, 0x307, 0x313, 0x314, 0x315, 0x316)
+    )
 
 
 def test_fault_bit_labels_preserve_unknown_bits():
@@ -317,10 +365,17 @@ async def test_disabled_curves_cannot_be_written():
     assert not unit.writes
 
 
-@pytest.mark.parametrize("key,bit", [("outdoor_coil_temperature", 7),
-    ("suction_temperature", 8), ("discharge_temperature", 9),
-    ("economizer_inlet_temperature", 10), ("economizer_outlet_temperature", 11),
-    ("indoor_coil_temperature", 14)])
+@pytest.mark.parametrize(
+    "key,bit",
+    [
+        ("outdoor_coil_temperature", 7),
+        ("suction_temperature", 8),
+        ("discharge_temperature", 9),
+        ("economizer_inlet_temperature", 10),
+        ("economizer_outlet_temperature", 11),
+        ("indoor_coil_temperature", 14),
+    ],
+)
 def test_system_one_sensor_fault_suppression_and_recovery(key, bit):
     raw = memory()
     address = BY_KEY[key].address
@@ -338,6 +393,7 @@ async def test_illegal_optional_address_preserves_neighbors_and_recovers():
 
     class PartialUnit(FakeUnit):
         unsupported = True
+
         async def read_holding_registers(self, address, count):
             if self.unsupported and address <= 0x53 < address + count:
                 self.reads.append((address, count))
@@ -364,7 +420,7 @@ async def test_optional_timeout_does_not_trigger_split_retry():
     unit.fail_addresses.add(0x53)
     device = HeatPump(unit)
     snapshot = await device.async_update()
-    assert [(a, n) for a, n in unit.reads if 0x51 <= a <= 0x5d] == [(0x51, 13)]
+    assert [(a, n) for a, n in unit.reads if 0x51 <= a <= 0x5D] == [(0x51, 13)]
     assert snapshot.value("input_power", device.config) is None
     assert "extra" in snapshot.errors
 
@@ -373,12 +429,17 @@ async def test_optional_timeout_does_not_trigger_split_retry():
 @pytest.mark.asyncio
 async def test_regulation_settings_are_read_only_and_not_temperature_scaled(divisor):
     unit = FakeUnit(memory(divisor, divisor))
-    unit.data.update({0x11a: 4, 0x11b: 3, 0x125: 2, 0x160: 5, 0x317: 350, 0x319: 400})
+    unit.data.update({0x11A: 4, 0x11B: 3, 0x125: 2, 0x160: 5, 0x317: 350, 0x319: 400})
     device = HeatPump(unit, DeviceConfig(measurement_divisor=divisor, setpoint_divisor=divisor))
     snapshot = await device.async_update()
-    for key, expected in [("heating_cooling_hysteresis", 4), ("floor_hysteresis", 3),
-                          ("target_stop_behavior", 2), ("dhw_hysteresis", 5),
-                          ("zone_2_setpoint_raw", 350), ("zone_1_setpoint_raw", 400)]:
+    for key, expected in [
+        ("heating_cooling_hysteresis", 4),
+        ("floor_hysteresis", 3),
+        ("target_stop_behavior", 2),
+        ("dhw_hysteresis", 5),
+        ("zone_2_setpoint_raw", 350),
+        ("zone_1_setpoint_raw", 400),
+    ]:
         assert snapshot.value(key, device.config) == expected
         with pytest.raises(WriteRejected):
             await device.async_write(key, 1)
@@ -400,7 +461,7 @@ async def test_other_modbus_exceptions_never_trigger_split_reads(code):
 
     unit = RejectingUnit()
     snapshot = await HeatPump(unit).async_update()
-    assert [(a, n) for a, n in unit.reads if 0x51 <= a <= 0x5d] == [(0x51, 13)]
+    assert [(a, n) for a, n in unit.reads if 0x51 <= a <= 0x5D] == [(0x51, 13)]
     assert snapshot.raw[0x50] == 320 and 0x54 not in snapshot.raw
     assert "extra" in snapshot.errors
     assert not unit.writes

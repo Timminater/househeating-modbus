@@ -22,8 +22,12 @@ niet bijgeteld. Het scaninterval begrenst dus de waarnemingsresolutie.
 
 Een meetgat, onbeschikbare status of herstart onderbreekt de cyclusbaseline.
 Er worden geen starts of draaiuren tijdens uitval verzonnen. Totalen worden
-vóór publicatie opgeslagen. Een opslagfout bewaart het laatste goede totaal
-en onderbreekt de meetcontinuïteit. Daggrenzen volgen de HA-tijdzone.
+elke vijf minuten en bij ontladen of afsluiten van Home Assistant opgeslagen;
+bij een crash kunnen hooguit de laatste minuten ontbreken. Een opslagfout is
+zichtbaar als `statistics_storage_error` en wordt later opnieuw geprobeerd.
+Onleesbare opgeslagen statistieken worden niet overschreven: alleen de
+statistieken gaan uit en er verschijnt een reparatiemelding. Daggrenzen volgen
+de HA-tijdzone.
 
 Aanvullende binaire sensoren maken compressor-, ventilator-, pomp-, klep- en
 hulpverwarmingsrelais zichtbaar. Bestaande bekende foutbits krijgen afzonderlijke
@@ -151,8 +155,19 @@ de bestaande vrijgave niet en breidt de schrijfallowlist niet uit.
 - Iedere opdracht gebruikt de bestaande commandolock, een verse snapshot,
   identiteit-/sensorcontrole, schaalcontrole, grenzen en terugleesverificatie.
 - Minimale wijziging en wachttijd voorkomen onnodige herhaalde opdrachten.
+- Automatisch bedienen vereist uitleesbare ingebouwde curves: curves aan in de
+  bedieningsopties en protocolversie 130 of nieuwer. Anders weigert het formulier
+  en toont de status `native_curve_unknown`.
+- Zolang er niets hoeft te veranderen, leest de regeling niets extra van de bus
+  en schrijft ze niets naar schijf. Alleen bij een waarschijnlijk nodige wijziging
+  volgt een verse uitlezing onder de commandolock.
 - Een handmatige afwijking van het laatst door de regeling ingestelde setpoint
-  stopt de regeling. Een controle-, opslag- of schrijffout stopt haar ook.
+  stopt de regeling. Een verstuurde maar onbevestigde opdracht of een opslagfout
+  stopt haar ook.
+- Een weigering of leesfout vóór verzending (verbindingsstoring, sensorfout,
+  gewijzigde identiteit) stopt haar niet: er is niets verstuurd. De status wordt
+  `control_unavailable` of `control_locked`; na ruim twee uitleesintervallen volgt
+  een nieuwe poging.
 - Vóór een mogelijke opdracht wordt een persistente blokkering opgeslagen.
   Een onderbroken proces of onzeker antwoord kan daardoor niet na een herstart
   automatisch opnieuw schrijven. Een gewone reload heft die stop niet op.

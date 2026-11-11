@@ -1,35 +1,47 @@
 """Real HA 2026.10.1 classes and schemas; only the physical Modbus unit is simulated."""
-import importlib
+
 import asyncio
-from pathlib import Path
-from types import MappingProxyType
+import importlib
 import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
+from types import MappingProxyType
 
-import pytest
 import probatio
-from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry, ConfigEntries
-from homeassistant.components.climate import HVACMode
+import pytest
+from homeassistant.components.climate import HVACAction, HVACMode
 from homeassistant.components.water_heater import STATE_HEAT_PUMP, STATE_OFF
+from homeassistant.config_entries import ConfigEntries, ConfigEntry
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / 'tests'))
+sys.path.insert(0, str(ROOT / "tests"))
 from fake_unit import FakeUnit
+
 from custom_components.househeating import config_flow
-from custom_components.househeating._vendor.househeating_modbus import HeatPump, DeviceConfig
+from custom_components.househeating._vendor.househeating_modbus import DeviceConfig, HeatPump
 from custom_components.househeating.climate import HouseHeatingClimate
-from custom_components.househeating.water_heater import HouseHeatingWaterHeater
 from custom_components.househeating.coordinator import HouseHeatingCoordinator
+from custom_components.househeating.switch import HouseHeatingFloorHeating
+from custom_components.househeating.water_heater import HouseHeatingWaterHeater
 
 
 async def harness(tmp_path, *, authorized=True):
     hass = HomeAssistant(str(tmp_path))
-    entry = ConfigEntry(version=1, minor_version=1, domain='househeating',
-                        title='Test', data={'name': 'Test'}, options={}, source='user',
-                        unique_id='test', discovery_keys=MappingProxyType({}), subentries_data=None)
+    entry = ConfigEntry(
+        version=1,
+        minor_version=1,
+        domain="househeating",
+        title="Test",
+        data={"name": "Test"},
+        options={},
+        source="user",
+        unique_id="test",
+        discovery_keys=MappingProxyType({}),
+        subentries_data=None,
+    )
     unit = FakeUnit()
     pump = HeatPump(unit, DeviceConfig(verify_delay=0))
     await pump.async_update()
@@ -41,17 +53,35 @@ async def harness(tmp_path, *, authorized=True):
 
 
 def test_actual_imports_and_schemas():
-    for part in ('', 'config_flow', 'climate', 'water_heater', 'sensor', 'binary_sensor',
-                 'number', 'select', 'switch', 'button', 'diagnostics'):
-        importlib.import_module('custom_components.househeating' + ('.' + part if part else ''))
+    for part in (
+        "",
+        "config_flow",
+        "climate",
+        "water_heater",
+        "sensor",
+        "binary_sensor",
+        "number",
+        "select",
+        "switch",
+        "button",
+        "diagnostics",
+    ):
+        importlib.import_module("custom_components.househeating" + ("." + part if part else ""))
     assert isinstance(config_flow.connection_schema({}), probatio.Schema)
-    for divisor in ('1', '10'):
-        data = config_flow.connection_schema({})({'name': 'Test', 'transport': 'tcp',
-                    'host': '192.0.2.1', 'unit_id': 1, 'measurement_divisor': divisor,
-                    'setpoint_divisor': divisor})
-        assert data['setpoint_divisor'] == divisor
+    for divisor in ("1", "10"):
+        data = config_flow.connection_schema({})(
+            {
+                "name": "Test",
+                "transport": "tcp",
+                "host": "192.0.2.1",
+                "unit_id": 1,
+                "measurement_divisor": divisor,
+                "setpoint_divisor": divisor,
+            }
+        )
+        assert data["setpoint_divisor"] == divisor
     with pytest.raises(probatio.Invalid):
-        config_flow.connection_schema({})({'name':'Test', 'transport':'tcp', 'unit_id':0})
+        config_flow.connection_schema({})({"name": "Test", "transport": "tcp", "unit_id": 0})
 
 
 @pytest.mark.asyncio
@@ -103,7 +133,7 @@ async def test_uncertain_first_write_never_powers_on(tmp_path):
     unit.ack_error = True
     with pytest.raises(HomeAssistantError):
         await HouseHeatingWaterHeater(coordinator).async_turn_on()
-    assert unit.writes == [(0x304, 5)]
+    assert unit.writes == [(0x304, 2)]
     assert unit.data[0x305] == 0
 
 
@@ -124,41 +154,118 @@ async def test_real_config_flow_saves_explicit_scaling(tmp_path, monkeypatch):
     hass = HomeAssistant(str(tmp_path))
     hass.config_entries = ConfigEntries(hass, {})
     unit = FakeUnit()
+
     @asynccontextmanager
     async def temporary(hass, params, unit_id):
         yield unit
-    monkeypatch.setattr(config_flow, 'async_get_temporary_unit', temporary)
+
+    monkeypatch.setattr(config_flow, "async_get_temporary_unit", temporary)
     flow = config_flow.HouseHeatingConfigFlow()
     flow.hass = hass
-    flow.context = {'source': 'user'}
+    flow.context = {"source": "user"}
     form = await flow.async_step_user()
-    assert isinstance(form['data_schema'], probatio.Schema)
-    result = await flow.async_step_user({'name':'Test', 'transport':'tcp', 'host':'192.0.2.1',
-                    'unit_id':1, 'measurement_divisor':'1', 'setpoint_divisor':'10'})
-    assert result['options']['measurement_divisor'] == 1
-    assert result['options']['setpoint_divisor'] == 10
-    assert result['options']['allow_control'] is False
+    assert isinstance(form["data_schema"], probatio.Schema)
+    result = await flow.async_step_user(
+        {
+            "name": "Test",
+            "transport": "tcp",
+            "host": "192.0.2.1",
+            "unit_id": 1,
+            "measurement_divisor": "1",
+            "setpoint_divisor": "10",
+        }
+    )
+    assert result["options"]["measurement_divisor"] == 1
+    assert result["options"]["setpoint_divisor"] == 10
+    assert result["options"]["allow_control"] is False
     assert not unit.writes
 
 
 @pytest.mark.asyncio
-async def test_live_setpoint_route_and_global_profile(tmp_path):
+async def test_live_setpoint_route_profile_presets_and_floor_switch(tmp_path):
     coordinator, unit = await harness(tmp_path)
     climate = HouseHeatingClimate(coordinator)
+    floor = HouseHeatingFloorHeating(coordinator)
+    assert climate.preset_modes == ["standard", "powerful", "silent"]
     await climate.async_set_hvac_mode(HVACMode.COOL)
     await climate.async_set_temperature(temperature=18)
-    assert unit.data[0x300] == 180
-    await climate.async_set_preset_mode('floor_heating')
+    assert unit.data[0x300] == 180 and unit.data[0x304] == 4
+    with pytest.raises(HomeAssistantError):  # floor heating never switches cooling to heating
+        await floor.async_turn_on()
+    await climate.async_set_hvac_mode(HVACMode.HEAT)
+    await floor.async_turn_on()
+    assert unit.data[0x304] == 7 and floor.is_on and climate.extra_state_attributes["floor_heating"]
     await climate.async_set_temperature(temperature=36)
     assert unit.data[0x303] == 360
-    await climate.async_set_preset_mode('silent')
-    assert unit.data[0x307] == 2
+    await climate.async_set_preset_mode("silent")
+    assert unit.data[0x307] == 2 and unit.data[0x304] == 7 and climate.preset_mode == "silent"
     await HouseHeatingWaterHeater(coordinator).async_turn_off()
-    assert unit.data[0x307] == 2
-    await climate.async_set_preset_mode('floor_heating')
-    assert unit.data[0x307] == 0 and climate.preset_mode == 'floor_heating'
-    await climate.async_set_preset_mode('standard')
-    assert unit.data[0x304] == 1 and climate.preset_mode == 'standard'
+    assert unit.data[0x307] == 2 and unit.data[0x304] == 3
+    # A profile preset never changes the space mode.
+    await climate.async_set_preset_mode("standard")
+    assert unit.data[0x307] == 0 and unit.data[0x304] == 3 and climate.preset_mode == "standard"
+    await floor.async_turn_off()
+    assert unit.data[0x304] == 1 and not floor.is_on and unit.data[0x307] == 0
+
+
+@pytest.mark.asyncio
+async def test_floor_switch_never_starts_a_stopped_unit(tmp_path):
+    coordinator, unit = await harness(tmp_path)
+    unit.data.update({0x304: 1, 0x305: 0})
+    await HouseHeatingFloorHeating(coordinator).async_turn_on()
+    assert unit.writes == [(0x304, 3)] and unit.data[0x305] == 0
+
+
+@pytest.mark.asyncio
+async def test_set_temperature_with_hvac_mode(tmp_path):
+    from homeassistant.components.climate import ATTR_HVAC_MODE
+
+    coordinator, unit = await harness(tmp_path)
+    unit.data.update({0x304: 1, 0x305: 0})
+    await HouseHeatingClimate(coordinator).async_set_temperature(temperature=20, **{ATTR_HVAC_MODE: HVACMode.COOL})
+    # Mode first, setpoint of the resulting mode, power on last.
+    assert unit.writes == [(0x304, 0), (0x300, 200), (0x305, 1)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "status,mode,power,expected",
+    [
+        (1 << 14, 1, 1, HVACAction.HEATING),
+        (1 << 14, 7, 1, HVACAction.HEATING),
+        (1 << 14, 0, 1, HVACAction.COOLING),
+        (1 << 14, 4, 1, None),
+        (1 << 12, 1, 1, HVACAction.IDLE),
+        (1 << 14, 1, 0, HVACAction.OFF),
+        (1 << 14, 2, 1, HVACAction.OFF),
+    ],
+)
+async def test_hvac_action_from_reported_status(tmp_path, status, mode, power, expected):
+    coordinator, unit = await harness(tmp_path)
+    unit.data.update({0: status, 0x304: mode, 0x305: power})
+    await coordinator.async_refresh()
+    assert HouseHeatingClimate(coordinator).hvac_action == expected
+
+
+@pytest.mark.asyncio
+async def test_hot_water_from_stopped_unit_starts_only_hot_water(tmp_path):
+    coordinator, unit = await harness(tmp_path)
+    unit.data.update({0x304: 1, 0x305: 0})
+    await HouseHeatingWaterHeater(coordinator).async_turn_on()
+    assert unit.writes == [(0x304, 2), (0x305, 1)]
+    assert HouseHeatingClimate(coordinator).hvac_mode == HVACMode.OFF
+
+
+@pytest.mark.asyncio
+async def test_water_heater_available_without_extended_groups(tmp_path):
+    from dataclasses import replace
+
+    coordinator, unit = await harness(tmp_path)
+    coordinator.device.config = replace(coordinator.device.config, extended=False)
+    coordinator.force_optional = True
+    await coordinator.async_refresh()
+    boiler = HouseHeatingWaterHeater(coordinator)
+    assert boiler.available and boiler.current_temperature == 50
 
 
 @pytest.mark.asyncio
@@ -174,20 +281,21 @@ async def test_fresh_sensor_fault_blocks_all_platform_commands(tmp_path):
 async def test_concurrent_off_commands_do_not_restore_other_function(tmp_path):
     coordinator, unit = await harness(tmp_path)
     unit.delay = 0.001
-    await asyncio.gather(HouseHeatingClimate(coordinator).async_turn_off(),
-                         HouseHeatingWaterHeater(coordinator).async_turn_off())
+    await asyncio.gather(
+        HouseHeatingClimate(coordinator).async_turn_off(), HouseHeatingWaterHeater(coordinator).async_turn_off()
+    )
     assert unit.data[0x305] == 0
     assert unit.max_active == 1
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("mode,expected", [(0, 0), (4, 4), (1, 1), (5, 5), (3, 3), (7, 7)])
-async def test_climate_turn_on_preserves_stopped_space_mode(tmp_path, mode, expected):
+@pytest.mark.parametrize("mode,expected", [(0, 0), (4, 0), (1, 1), (5, 1), (3, 3), (7, 3)])
+async def test_climate_turn_on_from_stopped_unit_starts_only_space_mode(tmp_path, mode, expected):
     coordinator, unit = await harness(tmp_path)
     unit.data.update({0x304: mode, 0x305: 0})
     await HouseHeatingClimate(coordinator).async_turn_on()
     assert unit.data[0x304] == expected and unit.data[0x305] == 1
-    assert unit.writes == [(0x305, 1)]
+    assert unit.writes == ([] if mode == expected else [(0x304, expected)]) + [(0x305, 1)]
 
 
 @pytest.mark.asyncio
@@ -203,13 +311,22 @@ async def test_climate_turn_on_restores_cooling_after_dhw_only(tmp_path):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("status,power,expected", [(1 << 13, 1, "fault_shutdown"),
-    ((1 << 14) | (1 << 12), 1, "running"), (1 << 12, 1, "target_reached"),
-    (1 << 15, 1, "waiting"), (0, 1, "standby"), (0, 0, "off")])
+@pytest.mark.parametrize(
+    "status,power,expected",
+    [
+        (1 << 13, 1, "fault_shutdown"),
+        ((1 << 14) | (1 << 12), 1, "running"),
+        (1 << 12, 1, "target_reached"),
+        (1 << 15, 1, "waiting"),
+        (0, 1, "standby"),
+        (0, 0, "off"),
+    ],
+)
 async def test_reported_operation_uses_status_not_temperature_prediction(tmp_path, status, power, expected):
     from custom_components.househeating.sensor import ReportedOperationSensor
+
     coordinator, unit = await harness(tmp_path)
-    unit.data.update({0: status, 0x305: power, 0x11a: 4, 0x11b: 3, 0x125: 0, 0x160: 5})
+    unit.data.update({0: status, 0x305: power, 0x11A: 4, 0x11B: 3, 0x125: 0, 0x160: 5})
     coordinator.force_optional = True
     await coordinator.async_refresh()
     sensor = ReportedOperationSensor(coordinator, "reported_operation")
@@ -222,9 +339,10 @@ async def test_reported_operation_uses_status_not_temperature_prediction(tmp_pat
 
 @pytest.mark.asyncio
 async def test_faulted_sensor_entity_unavailable_and_fault_entity_named(tmp_path):
-    from custom_components.househeating.sensor import HouseHeatingSensor
-    from custom_components.househeating.binary_sensor import FaultBinary
     from custom_components.househeating._vendor.househeating_modbus.registers import BY_KEY
+    from custom_components.househeating.binary_sensor import FaultBinary
+    from custom_components.househeating.sensor import HouseHeatingSensor
+
     coordinator, unit = await harness(tmp_path)
     unit.data[5] = 1 << 8
     await coordinator.async_refresh()

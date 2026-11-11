@@ -1,4 +1,5 @@
 """Read-only command-line probe. No command-line write facility is provided."""
+
 from __future__ import annotations
 
 import argparse
@@ -16,8 +17,7 @@ async def run(args) -> None:
     if args.transport == "serial":
         if not args.device:
             raise ValueError("--device is required for serial")
-        params = ModbusSerialParams(device=args.device, baudrate=9600, bytesize=8,
-                                    parity="N", stopbits=1, framer="rtu")
+        params = ModbusSerialParams(device=args.device, baudrate=9600, bytesize=8, parity="N", stopbits=1, framer="rtu")
     else:
         if not args.host:
             raise ValueError("--host is required for a network connection")
@@ -31,14 +31,17 @@ async def run(args) -> None:
         raise ValueError("Unit ID must be 1..247")
     connection = ModbusConnection(params)
     try:
-        config = DeviceConfig(measurement_divisor=args.measurement_divisor,
-                              setpoint_divisor=args.setpoint_divisor, extended=args.extended)
+        config = DeviceConfig(
+            measurement_divisor=args.measurement_divisor, setpoint_divisor=args.setpoint_divisor, extended=args.extended
+        )
         device = HeatPump(connection.for_unit(args.unit), config)
         snapshot = await device.async_update()
-        result = {"identity": asdict(snapshot.identity) if snapshot.identity else None,
-                  "layout_valid": snapshot.layout_valid,
-                  "raw": {f"0x{k:04X}": v for k, v in sorted(snapshot.raw.items())},
-                  "errors": dict(snapshot.errors)}
+        result = {
+            "identity": asdict(snapshot.identity) if snapshot.identity else None,
+            "layout_valid": snapshot.layout_valid,
+            "raw": {f"0x{k:04X}": v for k, v in sorted(snapshot.raw.items())},
+            "errors": dict(snapshot.errors),
+        }
         print(json.dumps(result, indent=2))
     finally:
         await connection.close()

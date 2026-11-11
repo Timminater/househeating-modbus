@@ -1,6 +1,8 @@
 """A read-only refresh command; no reset, defrost or forced-operation commands."""
+
 from homeassistant.components.button import ButtonEntity
 from homeassistant.helpers.entity import EntityCategory
+
 from .entity import HouseHeatingEntity
 
 

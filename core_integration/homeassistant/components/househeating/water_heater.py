@@ -1,8 +1,13 @@
 """Hot-water entity that retains the shared space-heating mode."""
+
 from homeassistant.components.water_heater import (
-    STATE_HEAT_PUMP, STATE_OFF, WaterHeaterEntity, WaterHeaterEntityFeature,
+    STATE_HEAT_PUMP,
+    STATE_OFF,
+    WaterHeaterEntity,
+    WaterHeaterEntityFeature,
 )
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
+
 from househeating_modbus.controls import DHW_MODES, dhw_plan
 from househeating_modbus.models import WriteRejected
 from .entity import HouseHeatingEntity
@@ -17,9 +22,11 @@ class HouseHeatingWaterHeater(HouseHeatingEntity, WaterHeaterEntity):
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_operation_list = [STATE_OFF, STATE_HEAT_PUMP]
     _attr_target_temperature_step = 1.0
-    _attr_supported_features = (WaterHeaterEntityFeature.TARGET_TEMPERATURE
-                                | WaterHeaterEntityFeature.OPERATION_MODE
-                                | WaterHeaterEntityFeature.ON_OFF)
+    _attr_supported_features = (
+        WaterHeaterEntityFeature.TARGET_TEMPERATURE
+        | WaterHeaterEntityFeature.OPERATION_MODE
+        | WaterHeaterEntityFeature.ON_OFF
+    )
 
     def __init__(self, coordinator):
         super().__init__(coordinator, "dhw_water_heater")
@@ -28,9 +35,13 @@ class HouseHeatingWaterHeater(HouseHeatingEntity, WaterHeaterEntity):
     def available(self):
         raw = self.coordinator.device.snapshot.raw
         supported = raw.get(0x130) == 1 or raw.get(0x304) in DHW_MODES
-        return (super().available and self.coordinator.device.control_ready and supported
-                and self.register_value("dhw_temperature") is not None
-                and self.register_value("dhw_setpoint") is not None)
+        return (
+            super().available
+            and self.coordinator.device.control_ready
+            and supported
+            and self.register_value("dhw_temperature") is not None
+            and self.register_value("dhw_setpoint") is not None
+        )
 
     @property
     def current_temperature(self):
@@ -62,6 +73,7 @@ class HouseHeatingWaterHeater(HouseHeatingEntity, WaterHeaterEntity):
             if self.register_value("dhw_temperature") is None:
                 raise WriteRejected("A valid hot-water temperature is required")
             return dhw_plan(snapshot.raw, operation_mode == STATE_HEAT_PUMP)
+
         await self.coordinator.async_control(plan)
 
     async def async_turn_on(self, **kwargs):
@@ -72,10 +84,12 @@ class HouseHeatingWaterHeater(HouseHeatingEntity, WaterHeaterEntity):
 
     async def async_set_temperature(self, **kwargs):
         if ATTR_TEMPERATURE in kwargs:
+
             def plan(snapshot):
                 if not (snapshot.raw.get(0x130) == 1 or snapshot.raw.get(0x304) in DHW_MODES):
                     raise WriteRejected("Hot-water support is not confirmed")
                 if self.register_value("dhw_temperature") is None:
                     raise WriteRejected("A valid hot-water temperature is required")
                 return [("dhw_setpoint", kwargs[ATTR_TEMPERATURE])]
+
             await self.coordinator.async_control(plan)

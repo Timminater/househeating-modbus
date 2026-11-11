@@ -3,6 +3,7 @@
 The caller owns the connection. This module never opens or closes a transport,
 never writes at startup, and never sends service/factory commands.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -19,11 +20,19 @@ if TYPE_CHECKING:
 
 CORE_BLOCKS = ((0x0000, 10), (0x0040, 17), (0x0300, 8))
 FAST_OPTIONAL_BLOCKS = (("extra", 0x0051, 13), ("io", 0x0019, 8))
-EXTENDED_BLOCKS = (("zones", 0x0072, 12), ("dhw_config", 0x0130, 1),
-                   ("temperature_control", 0x0174, 1),
-                   ("hysteresis", 0x011A, 2), ("target_stop", 0x0125, 1),
-                   ("dhw_hysteresis", 0x0160, 1),
-                   ("zone_2_setpoint", 0x0317, 1), ("zone_1_setpoint", 0x0319, 1))
+EXTENDED_BLOCKS = (
+    ("zones", 0x0072, 12),
+    ("dhw_config", 0x0130, 1),
+    ("temperature_control", 0x0174, 1),
+    ("hysteresis", 0x011A, 2),
+    ("target_stop", 0x0125, 1),
+    ("dhw_hysteresis", 0x0160, 1),
+    ("zone_2_setpoint", 0x0317, 1),
+    ("zone_1_setpoint", 0x0319, 1),
+)
+# Minimal hot-water inputs, read separately only when the extended groups are off.
+HOT_WATER_FAST_BLOCKS = (("dhw_temperature", 0x0054, 1),)
+HOT_WATER_SLOW_BLOCKS = (("dhw_config", 0x0130, 1),)
 IDENTITY_BLOCK = (0x0360, 4)
 CURVE_BLOCK = (0x0313, 4)
 
@@ -31,8 +40,13 @@ CURVE_BLOCK = (0x0313, 4)
 class HeatPump:
     """Device-specific protocol and safety boundary, using backend-neutral I/O."""
 
-    def __init__(self, unit: ModbusUnit, config: DeviceConfig | None = None,
-                 *, authorized_identity: tuple[int, int, int, int] | None = None) -> None:
+    def __init__(
+        self,
+        unit: ModbusUnit,
+        config: DeviceConfig | None = None,
+        *,
+        authorized_identity: tuple[int, int, int, int] | None = None,
+    ) -> None:
         self.unit = unit
         self.config = config or DeviceConfig()
         self.authorized_identity = authorized_identity
@@ -50,9 +64,12 @@ class HeatPump:
     @property
     def control_ready(self) -> bool:
         identity = self.snapshot.identity
-        return (self.authorized_identity is not None and identity is not None
-                and identity.fingerprint == self.authorized_identity
-                and self.snapshot.layout_valid)
+        return (
+            self.authorized_identity is not None
+            and identity is not None
+            and identity.fingerprint == self.authorized_identity
+            and self.snapshot.layout_valid
+        )
 
     def invalidate_optional(self) -> None:
         """Force fresh optional data after a lost connection."""
@@ -71,24 +88,30 @@ class HeatPump:
                 # Normalize errors at this external-I/O boundary only.
                 # CancelledError inherits BaseException and is intentionally not swallowed.
                 raise CommunicationError(f"Read 0x{address + offset:04X}, count {length}: {err}") from err
-            if (not isinstance(values, (list, tuple)) or len(values) != length
-                    or any(type(v) is not int or not 0 <= v <= 65535 for v in values)):
+            if (
+                not isinstance(values, (list, tuple))
+                or len(values) != length
+                or any(type(v) is not int or not 0 <= v <= 65535 for v in values)
+            ):
                 raise CommunicationError(f"Invalid response for 0x{address + offset:04X}")
             result.update({address + offset + i: value for i, value in enumerate(values)})
         return result
 
-    async def async_update(self, *, force_optional: bool = False, telemetry_enabled: bool = False,
-                           diagnostics_enabled: bool = False) -> Snapshot:
+    async def async_update(
+        self, *, force_optional: bool = False, telemetry_enabled: bool = False, diagnostics_enabled: bool = False
+    ) -> Snapshot:
         """Read mandatory data atomically; optional failures never reuse old values."""
         async with self._lock:
             raw: dict[int, int] = {}
             samples: dict[int, ReadWindow] = {}
+
             async def read(address, count, sample_target=samples):
                 start = time()
                 values = await self._read(address, count)
                 window = ReadWindow(start, time(), monotonic())
                 sample_target.update({a: window for a in values})
                 return values
+
             async def optional_read(name, address, count, target, sample_target, error_target):
                 try:
                     target.update(await read(address, count, sample_target))
@@ -124,7 +147,13 @@ class HeatPump:
                 optional: dict[int, int] = {}
                 optional_errors: dict[str, str] = {}
                 optional_samples: dict[int, ReadWindow] = {}
-                blocks = list(EXTENDED_BLOCKS) if self.config.extended else []
+                blocks = (
+                    list(EXTENDED_BLOCKS)
+                    if self.config.extended
+                    else list(HOT_WATER_SLOW_BLOCKS)
+                    if self.config.hot_water
+                    else []
+                )
                 if self.config.curves and identity is not None and identity.protocol >= 130:
                     blocks.append(("curves", *CURVE_BLOCK))
                 for name, address, count in blocks:
@@ -140,9 +169,11 @@ class HeatPump:
             errors.update(self._slow_errors)
             # Read frequently changing optional measurements on every scan, without
             # making unsupported extras fatal to the mandatory polling cycle.
-            if self.config.extended:
-                for name, address, count in FAST_OPTIONAL_BLOCKS:
-                    await optional_read(name, address, count, raw, samples, errors)
+            fast_blocks = (
+                FAST_OPTIONAL_BLOCKS if self.config.extended else HOT_WATER_FAST_BLOCKS if self.config.hot_water else ()
+            )
+            for name, address, count in fast_blocks:
+                await optional_read(name, address, count, raw, samples, errors)
             if telemetry_enabled:
                 for address in (0x58, 0x5C, 0x5D):
                     if address not in raw:
@@ -151,12 +182,12 @@ class HeatPump:
                         except CommunicationError as err:
                             errors[f"telemetry_{address:04x}"] = str(err)
             if diagnostics_enabled:
-                for address in (0x19,0x1A):
+                for address in (0x19, 0x1A):
                     if address not in raw:
                         try:
-                            raw.update(await read(address,1))
+                            raw.update(await read(address, 1))
                         except CommunicationError as err:
-                            errors[f"diagnostics_{address:04x}"]=str(err)
+                            errors[f"diagnostics_{address:04x}"] = str(err)
             self.snapshot = Snapshot(raw, errors, time(), optional_timestamp, samples)
             return self.snapshot
 
@@ -230,7 +261,9 @@ class HeatPump:
             try:
                 await self.unit.write_register(address, encoded)
             except Exception as err:
-                raise VerificationError("Write acknowledgement failed; command may have reached the device. Read its state before retrying.") from err
+                raise VerificationError(
+                    "Write acknowledgement failed; command may have reached the device. Read its state before retrying."
+                ) from err
             actual: int | None = None
             for _ in range(3):
                 await asyncio.sleep(self.config.verify_delay)
@@ -242,7 +275,9 @@ class HeatPump:
                     self._accept_readback(address, actual)
                     self.last_write["result"] = "verified"
                     return
-            raise VerificationError(f"Readback mismatch for {key}: requested {encoded}, received {actual}; no automatic rewrite performed")
+            raise VerificationError(
+                f"Readback mismatch for {key}: requested {encoded}, received {actual}; no automatic rewrite performed"
+            )
 
     def _accept_readback(self, address: int, actual: int) -> None:
         """Adopt an observed value, including an externally changed idempotent target."""

@@ -3,10 +3,11 @@
 Only test our wiring and flow decisions. Real config-flow serialization,
 registries, dependency loading, scheduling and device transport are not tested.
 """
+
+import sys
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from enum import StrEnum
-import sys
 from types import ModuleType, SimpleNamespace
 
 
@@ -18,7 +19,7 @@ class Generic:
 
 class HAError(Exception):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args or (kwargs.get('translation_key', ''),))
+        super().__init__(*args or (kwargs.get("translation_key", ""),))
         self.details = kwargs
 
 
@@ -29,9 +30,9 @@ class UpdateFailed(Exception):
 class Entry(Generic):
     def __init__(self, data, options):
         self.data, self.options = data, options
-        self.entry_id = 'stable_entry'
-        self.unique_id = data.get('connection_key', 'endpoint')
-        self.title = data.get('name', 'HouseHeating')
+        self.entry_id = "stable_entry"
+        self.unique_id = data.get("connection_key", "endpoint")
+        self.title = data.get("name", "HouseHeating")
         self.unload_callbacks = []
 
     def async_on_unload(self, callback):
@@ -43,7 +44,7 @@ class Coordinator(Generic):
         self.hass = hass
         self.last_update_success = True
         self.data = None
-        self.update_interval = kwargs.get('update_interval')
+        self.update_interval = kwargs.get("update_interval")
 
     async def async_refresh(self):
         try:
@@ -61,6 +62,9 @@ class Coordinator(Generic):
 
     def async_set_update_error(self, error):
         self.last_update_success = False
+
+    def async_add_listener(self, update_callback):
+        return lambda: None
 
 
 class CoordinatorEntity(Generic):
@@ -83,13 +87,13 @@ class Flow:
         return None
 
     def async_create_entry(self, **kwargs):
-        return {'type': 'create_entry', **kwargs}
+        return {"type": "create_entry", **kwargs}
 
     def async_show_form(self, **kwargs):
-        return {'type': 'form', **kwargs}
+        return {"type": "form", **kwargs}
 
     def async_abort(self, **kwargs):
-        return {'type': 'abort', **kwargs}
+        return {"type": "abort", **kwargs}
 
     def _async_current_entries(self):
         return []
@@ -105,7 +109,7 @@ class TcpParams:
 
     @property
     def endpoint(self):
-        return ('tcp', self.host, self.port)
+        return ("tcp", self.host, self.port)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -113,13 +117,13 @@ class SerialParams:
     device: str
     baudrate: int = 9600
     bytesize: int = 8
-    parity: str = 'N'
+    parity: str = "N"
     stopbits: int = 1
-    framer: str = 'rtu'
+    framer: str = "rtu"
 
     @property
     def endpoint(self):
-        return ('serial', self.device)
+        return ("serial", self.device)
 
 
 def install(monkeypatch):
@@ -130,44 +134,87 @@ def install(monkeypatch):
         monkeypatch.setitem(sys.modules, name, m)
         return m
 
-    for n in ('homeassistant', 'homeassistant.components', 'homeassistant.helpers'):
+    for n in ("homeassistant", "homeassistant.components", "homeassistant.helpers"):
         module(n)
-    module('homeassistant.core', HomeAssistant=object, callback=lambda f: f)
-    module('homeassistant.config_entries', ConfigEntry=Entry, ConfigFlow=Flow,
-           OptionsFlowWithReload=Flow)
-    module('homeassistant.exceptions', HomeAssistantError=HAError)
-    platform=StrEnum('Platform', {n:n.lower() for n in ('SENSOR','BINARY_SENSOR','NUMBER','SELECT','SWITCH','BUTTON','CLIMATE','WATER_HEATER')})
-    module('homeassistant.const', Platform=platform,
-           UnitOfTemperature=StrEnum('UnitOfTemperature', {'CELSIUS':'°C'}))
-    module('homeassistant.helpers.config_validation', config_entry_only_config_schema=lambda d: {})
-    module('homeassistant.helpers.entity', EntityCategory=StrEnum('EntityCategory', {'DIAGNOSTIC':'diagnostic','CONFIG':'config'}))
-    module('homeassistant.helpers.device_registry', DeviceInfo=dict)
-    module('homeassistant.helpers.update_coordinator', DataUpdateCoordinator=Coordinator,
-           CoordinatorEntity=CoordinatorEntity, UpdateFailed=UpdateFailed)
-    for name,cls in (('sensor','SensorEntity'),('number','NumberEntity'),('select','SelectEntity'),
-                     ('switch','SwitchEntity'),('binary_sensor','BinarySensorEntity'),('button','ButtonEntity')):
-        extra={}
-        if name=='sensor':
-            extra={'SensorDeviceClass':StrEnum('SensorDeviceClass',{x.upper():x for x in ('temperature','temperature_delta','frequency','voltage','current','power','energy','enum','volume_flow_rate')}),
-                   'SensorStateClass':StrEnum('SensorStateClass',{'MEASUREMENT':'measurement'})}
-        if name=='number':
-            extra={'NumberDeviceClass':StrEnum('NumberDeviceClass',{'TEMPERATURE':'temperature'}),
-                   'NumberMode':StrEnum('NumberMode',{'BOX':'box'})}
-        if name=='binary_sensor':
-            extra={'BinarySensorDeviceClass':StrEnum('BinarySensorDeviceClass',{'PROBLEM':'problem'})}
-        module(f'homeassistant.components.{name}', **{cls:type(cls,(),{}), **extra})
-    module('modbus_connection', ModbusSerialParams=SerialParams, ModbusTcpParams=TcpParams)
+    module("homeassistant.core", HomeAssistant=object, callback=lambda f: f)
+    module("homeassistant.config_entries", ConfigEntry=Entry, ConfigFlow=Flow, OptionsFlowWithReload=Flow)
+    module("homeassistant.exceptions", HomeAssistantError=HAError)
+    platform = StrEnum(
+        "Platform",
+        {
+            n: n.lower()
+            for n in ("SENSOR", "BINARY_SENSOR", "NUMBER", "SELECT", "SWITCH", "BUTTON", "CLIMATE", "WATER_HEATER")
+        },
+    )
+    module("homeassistant.const", Platform=platform, UnitOfTemperature=StrEnum("UnitOfTemperature", {"CELSIUS": "°C"}))
+    module("homeassistant.helpers.config_validation", config_entry_only_config_schema=lambda d: {})
+    module(
+        "homeassistant.helpers.entity",
+        EntityCategory=StrEnum("EntityCategory", {"DIAGNOSTIC": "diagnostic", "CONFIG": "config"}),
+    )
+    module("homeassistant.helpers.device_registry", DeviceInfo=dict)
+    module(
+        "homeassistant.helpers.update_coordinator",
+        DataUpdateCoordinator=Coordinator,
+        CoordinatorEntity=CoordinatorEntity,
+        UpdateFailed=UpdateFailed,
+    )
+    for name, cls in (
+        ("sensor", "SensorEntity"),
+        ("number", "NumberEntity"),
+        ("select", "SelectEntity"),
+        ("switch", "SwitchEntity"),
+        ("binary_sensor", "BinarySensorEntity"),
+        ("button", "ButtonEntity"),
+    ):
+        extra = {}
+        if name == "sensor":
+            extra = {
+                "SensorDeviceClass": StrEnum(
+                    "SensorDeviceClass",
+                    {
+                        x.upper(): x
+                        for x in (
+                            "temperature",
+                            "temperature_delta",
+                            "frequency",
+                            "voltage",
+                            "current",
+                            "power",
+                            "energy",
+                            "enum",
+                            "volume_flow_rate",
+                        )
+                    },
+                ),
+                "SensorStateClass": StrEnum("SensorStateClass", {"MEASUREMENT": "measurement"}),
+            }
+        if name == "number":
+            extra = {
+                "NumberDeviceClass": StrEnum("NumberDeviceClass", {"TEMPERATURE": "temperature"}),
+                "NumberMode": StrEnum("NumberMode", {"BOX": "box"}),
+            }
+        if name == "binary_sensor":
+            extra = {"BinarySensorDeviceClass": StrEnum("BinarySensorDeviceClass", {"PROBLEM": "problem"})}
+        module(f"homeassistant.components.{name}", **{cls: type(cls, (), {}), **extra})
+    module("modbus_connection", ModbusSerialParams=SerialParams, ModbusTcpParams=TcpParams)
 
     def unit(hass, entry, params, unit_id):
-        hass.shared_calls.append((params,unit_id))
+        hass.shared_calls.append((params, unit_id))
         return hass.unit
+
     @asynccontextmanager
     async def temporary(hass, params, unit_id):
-        hass.temporary_calls.append((params,unit_id))
+        hass.temporary_calls.append((params, unit_id))
         yield hass.unit
-    module('homeassistant.components.modbus', async_get_unit=unit, async_get_temporary_unit=temporary)
+
+    module("homeassistant.components.modbus", async_get_unit=unit, async_get_temporary_unit=temporary)
     # Use the real HA 2026.10 schema dependency, never a schema-library testdouble.
     import probatio
-    module('homeassistant.helpers.selector', SelectSelector=lambda x:probatio.In(x['options']),
-           SelectSelectorConfig=lambda **kw:kw,
-           SelectSelectorMode=SimpleNamespace(DROPDOWN='dropdown'))
+
+    module(
+        "homeassistant.helpers.selector",
+        SelectSelector=lambda x: probatio.In(x["options"]),
+        SelectSelectorConfig=lambda **kw: kw,
+        SelectSelectorMode=SimpleNamespace(DROPDOWN="dropdown"),
+    )

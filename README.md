@@ -7,14 +7,33 @@
 Integratie voor de **HouseHeating HH-C3-12** via de gedeelde Modbus-verbinding
 van Home Assistant. Monitoring, verwarming/koeling, warmwater en normale setpoints.
 
-**Versie 0.5.0 · Home Assistant 2026.10.1 of nieuwer · experimenteel**
+**Versie 0.6.0 · Home Assistant 2026.10.1 of nieuwer · experimenteel**
 
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Timminater&repository=househeating-modbus&category=integration)
 
-385 softwaretests geslaagd met echte Home Assistant-klassen en gesimuleerde
+446 softwaretests geslaagd met echte Home Assistant-klassen en gesimuleerde
 Modbus-antwoorden. Werking op een fysieke warmtepomp is nog niet bevestigd.
 
-## Nieuw in 0.5.0
+## Nieuw in 0.6.0
+
+- **Let op, gewijzigd:** de thermostaatpresets zijn alleen nog het profiel
+  (standaard, krachtig, stil). Vloerverwarming is een aparte schakelaar
+  **Vloerverwarming**. Pas automatiseringen met preset `floor_heating` aan.
+- Staat de hele warmtepomp uit, dan start de thermostaat alleen ruimteverwarming
+  of koeling en de boiler alleen warmwater. Een onthouden andere functie gaat niet
+  meer ongemerkt mee aan.
+- Energiemonitoring blijft werken bij een langer uitleesinterval: de maximale
+  meetouderdom is altijd minstens twee uitleesintervallen.
+- De automatische stooklijn leest en schrijft alleen nog als er echt iets moet
+  veranderen. Een storing vóór verzending stopt haar niet meer blijvend.
+- Minder schijfslijtage en een kleinere database: totalen worden elke vijf minuten
+  opgeslagen, attributen veranderen niet meer elke seconde.
+- Thermostaat toont de gerapporteerde actie (verwarmen, koelen, inactief) en
+  accepteert een HVAC-modus bij het instellen van de temperatuur.
+- De boiler werkt ook met extra registers uitgeschakeld. Onleesbare opgeslagen
+  totalen geven een reparatiemelding in plaats van de hele integratie te blokkeren.
+
+## Eerder toegevoegd in 0.5.0
 
 - Sensorfouten onderdrukken ook spoel-, zuig-, uitlaat- en economizermetingen.
 - Benoemde compressor-/aandrijvingsstoringen en een gerapporteerde bedrijfsstatus.
@@ -53,7 +72,7 @@ Voeg deze afzonderlijke repository toe, niet `Timminater/timminaters-integration
 
 ## Handmatig installeren
 
-1. Download `househeating_modbus_v0.5.0.zip` bij de
+1. Download `househeating_modbus_v0.6.0.zip` bij de
    [nieuwste release](https://github.com/Timminater/househeating-modbus/releases/latest).
 2. Pak het archief uit op je computer.
 3. Kopieer de volledige map `custom_components/househeating` naar de configuratiemap
@@ -94,7 +113,8 @@ Bevestigen verzendt geen schrijfopdracht.
 
 | Entiteit | Functie |
 |---|---|
-| Verwarming en koeling (`climate`) | Koelen, verwarmen, vloerverwarmingspreset en temperatuur |
+| Verwarming en koeling (`climate`) | Koelen, verwarmen, profielpreset en temperatuur |
+| Vloerverwarming (schakelaar) | Vloerverwarming of gewone verwarming kiezen tijdens verwarmen |
 | Warmwaterboiler (`water_heater`) | Warmwater aan/uit en boilertemperatuur |
 | Globale schakelaar | Hele warmtepomp aan/uit |
 | Keuzes en vier instelgetallen | Volledige normale modi, profiel, curves en afzonderlijke setpoints |
@@ -106,9 +126,14 @@ De boiler vereist ook een geldige boilermeting en bevestigde warmwaterfunctie
 (P48 of een warmwatermodus). Na herstel kan hij zonder opnieuw toevoegen beschikbaar worden.
 
 Verwarming uit op de thermostaat behoudt actief warmwater. Warmwater uit op de
-boiler behoudt ruimteverwarming of koeling. De globale schakelaar zet alles uit.
-De stille/krachtige preset geldt voor de hele warmtepomp; de boiler verandert
-dit profiel niet. De thermostaat toont de regelwatertemperatuur volgens P116,
+boiler behoudt ruimteverwarming of koeling. De globale schakelaar zet alles uit
+en weer aan. Staat de hele warmtepomp uit, dan zet de thermostaat alleen
+ruimteverwarming of koeling aan en de boiler alleen warmwater.
+De presets standaard/krachtig/stil zijn het profiel van de hele warmtepomp en
+veranderen nooit de modus; de boiler verandert dit profiel niet. De schakelaar
+**Vloerverwarming** wisselt alleen tussen vloerverwarming en gewone verwarming,
+behoudt warmwater en profiel, en zet een uitgeschakelde warmtepomp niet aan.
+Tijdens koelen of alleen warmwater weigert hij met een melding. De thermostaat toont de regelwatertemperatuur volgens P116,
 geen kamertemperatuur. Bij onbekende P116 blijft die meting leeg.
 Zone 2 heeft nog geen eigen bedieningsentiteit.
 
@@ -127,7 +152,8 @@ daarom afzonderlijk. Controleer de installatie voordat je een plafond verhoogt.
 Basiswaarden, boiler, debiet, vermogen en relais verversen standaard elke
 30 seconden. Overige extra registers en configuratie elke 120 seconden.
 Niet-ondersteunde extra groepen blokkeren de basisuitlezing niet. Extra metingen
-kun je uitzetten via de opties. Leessensoren naast bedieningsentiteiten zijn
+kun je uitzetten via de opties; de boilertemperatuur en P48 worden dan nog wel
+gelezen, zodat de boiler beschikbaar blijft. Leessensoren naast bedieningsentiteiten zijn
 bij nieuwe installaties standaard uitgeschakeld.
 
 ## Energiemonitoring (optioneel)
@@ -162,7 +188,8 @@ uit de gekozen release. `device_library` is de zelfstandige bibliotheek;
 `core_integration` is alleen voorbereiding op een eventuele Core-bijdrage.
 
 ```sh
-python -m pip install pytest pytest-asyncio probatio==0.13.0 tzdata
+python -m pip install pytest pytest-asyncio probatio==0.13.0 tzdata ruff==0.17.4
+ruff check . && ruff format --check .
 python -m pytest -q device_library/tests
 python -m pytest -q tests
 python tools/vendor_library.py
@@ -178,8 +205,9 @@ python tools/validate_release.py
 ```
 
 Voer contracttests en runtime-tests afzonderlijk uit: contracttests vervangen
-HA-modules door testdoubles. [ci/test.yaml](ci/test.yaml) bevat een nog niet
-geactiveerd GitHub Actions-voorbeeld; lokaal uitvoeren kan wel.
+HA-modules door testdoubles. [GitHub Actions](.github/workflows/test.yaml) draait
+bij elke push en pull request ruff, alle drie testsuites, de vendorpariteit en
+de releasecontrole.
 
 
 ## Verbeterde diagnose (0.5.0)

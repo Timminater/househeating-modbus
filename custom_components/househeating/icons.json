@@ -272,6 +272,9 @@
     "switch": {
       "power": {
         "default": "mdi:heat-pump"
+      },
+      "floor_heating": {
+        "default": "mdi:heating-coil"
       }
     },
     "binary_sensor": {
@@ -335,6 +338,11 @@
       "dhw_water_heater": {
         "default": "mdi:water-boiler"
       }
+    }
+  },
+  "services": {
+    "generate_dashboard": {
+      "service": "mdi:view-dashboard-edit"
     }
   }
 }
