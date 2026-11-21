@@ -31,8 +31,10 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 async def async_setup(hass, config):
     from .dashboard import async_register_dashboard_service
+    from .register_browser import async_register_browser
 
     async_register_dashboard_service(hass)
+    await async_register_browser(hass)
     return True
 
 

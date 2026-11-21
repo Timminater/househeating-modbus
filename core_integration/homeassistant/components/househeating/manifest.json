@@ -7,12 +7,13 @@
   "documentation": "https://github.com/Timminater/househeating-modbus",
   "config_flow": true,
   "dependencies": [
-    "modbus"
+    "modbus",
+    "panel_custom"
   ],
   "integration_type": "device",
   "iot_class": "local_polling",
   "requirements": [
-    "househeating-modbus==0.6.0"
+    "househeating-modbus==0.7.0"
   ],
   "issue_tracker": "https://github.com/Timminater/househeating-modbus/issues"
 }

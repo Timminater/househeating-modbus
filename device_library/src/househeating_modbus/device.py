@@ -97,6 +97,21 @@ class HeatPump:
             result.update({address + offset + i: value for i, value in enumerate(values)})
         return result
 
+    async def async_read_register(self, address: int, *, coil: bool = False) -> tuple[int, float]:
+        """Read one address alongside normal polling, without changing its snapshot."""
+        if type(address) is not int or not 0 <= address <= 0xFFFF:
+            raise ValueError("Invalid Modbus address")
+        async with self._lock:
+            if not coil:
+                return (await self._read(address, 1))[address], time()
+            try:
+                values = await self.unit.read_coils(address, 1)
+            except Exception as err:
+                raise CommunicationError(f"Read coil 0x{address:04X}: {err}") from err
+            if not isinstance(values, (list, tuple)) or len(values) != 1 or type(values[0]) is not bool:
+                raise CommunicationError(f"Invalid coil response for 0x{address:04X}")
+            return int(values[0]), time()
+
     async def async_update(
         self, *, force_optional: bool = False, telemetry_enabled: bool = False, diagnostics_enabled: bool = False
     ) -> Snapshot:

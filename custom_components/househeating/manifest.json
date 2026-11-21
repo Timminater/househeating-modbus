@@ -1,14 +1,15 @@
 {
   "domain": "househeating",
   "name": "HouseHeating Modbus",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "codeowners": [
     "@Timminater"
   ],
   "documentation": "https://github.com/Timminater/househeating-modbus",
   "config_flow": true,
   "dependencies": [
-    "modbus"
+    "modbus",
+    "panel_custom"
   ],
   "integration_type": "device",
   "iot_class": "local_polling",

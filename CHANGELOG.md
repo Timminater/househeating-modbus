@@ -1,5 +1,12 @@
 # Wijzigingen
 
+## 0.7.0 — 21 november 2026
+
+- **HouseHeating-registers** in de Home Assistant-zijbalk voor beheerders, met 854 rijen uit de Modbus-registerkaart, inclusief afzonderlijke statusbits.
+- Zoek op naam, registeradres of bit. Bekijk actuele en ruwe waarden, de laatste uitleestijd en de gedocumenteerde Modbus-toegang.
+- Lees registers op aanvraag uit per adres, pagina of filterselectie en exporteer de resultaten als JSON.
+- De registerbrowser gebruikt de bestaande Modbus-verbinding, is alleen-lezen en maakt geen extra entiteiten aan.
+
 ## 0.6.0 — 11 november 2026
 
 Gewijzigd gedrag (controleer automatiseringen):

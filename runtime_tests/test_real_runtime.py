@@ -5,15 +5,16 @@ import importlib
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
-from types import MappingProxyType
+from types import MappingProxyType, SimpleNamespace
+from unittest.mock import AsyncMock, Mock
 
 import probatio
 import pytest
 from homeassistant.components.climate import HVACAction, HVACMode
 from homeassistant.components.water_heater import STATE_HEAT_PUMP, STATE_OFF
-from homeassistant.config_entries import ConfigEntries, ConfigEntry
+from homeassistant.config_entries import ConfigEntries, ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, Unauthorized
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -26,6 +27,65 @@ from custom_components.househeating.climate import HouseHeatingClimate
 from custom_components.househeating.coordinator import HouseHeatingCoordinator
 from custom_components.househeating.switch import HouseHeatingFloorHeating
 from custom_components.househeating.water_heater import HouseHeatingWaterHeater
+
+
+@pytest.mark.asyncio
+async def test_register_browser_reads_only_documented_addresses(tmp_path, monkeypatch):
+    from inspect import unwrap
+
+    from homeassistant.components.frontend import DATA_PANELS
+
+    from custom_components.househeating import register_browser as browser
+
+    coordinator, unit = await harness(tmp_path)
+    entry = coordinator.entry
+    hass = coordinator.hass
+    hass.config_entries = ConfigEntries(hass, {})
+    entry._async_set_state(hass, ConfigEntryState.LOADED, None)
+    entry.runtime_data = coordinator
+    monkeypatch.setattr(hass.config_entries, "async_entries", lambda domain: [entry])
+    monkeypatch.setattr(
+        hass.config_entries, "async_get_entry", lambda entry_id: entry if entry_id == entry.entry_id else None
+    )
+    monkeypatch.setattr(hass, "http", SimpleNamespace(async_register_static_paths=AsyncMock()), raising=False)
+    await browser.async_register_browser(hass)
+    panel = hass.data[DATA_PANELS][browser.PANEL_PATH]
+    assert panel.require_admin and panel.config["_panel_custom"]["module_url"] == browser.SCRIPT_URL
+    handler, schema = hass.data["websocket_api"]["househeating/register_browser/read"]
+    assert handler is browser.ws_read
+    assert schema({"id": 1, "type": "househeating/register_browser/read", "entry_id": entry.entry_id, "address": 39})
+
+    connection = SimpleNamespace(user=SimpleNamespace(is_admin=False), send_result=Mock(), send_error=Mock())
+    message = {"id": 1, "entry_id": entry.entry_id}
+    with pytest.raises(Unauthorized):
+        browser.ws_read(hass, connection, {**message, "address": 0x0027})
+    connection.user.is_admin = True
+    reads_before = list(unit.reads)
+    browser.ws_catalog(hass, connection, message)
+    assert any(row[:3] == [0x001C, 0x001C, 4] for row in connection.send_result.call_args.args[1]["rows"])
+    browser.ws_snapshot(hass, connection, message)
+    assert connection.send_result.call_args.args[1]["samples"][0x004F]["value"] == 28
+    assert unit.reads == reads_before
+
+    read = unwrap(browser.ws_read)
+    snapshot = coordinator.device.snapshot
+    unit.data[0x0027] = 47
+    await read(hass, connection, {**message, "address": 0x0027})
+    sample = connection.send_result.call_args.args[1]
+    assert sample["raw"] == 47 and sample["source"] == "manual" and sample["at"] >= snapshot.timestamp
+    assert coordinator.device.snapshot is snapshot
+    await read(hass, connection, {**message, "address": 0x003F})
+    assert connection.send_error.call_args.args[1] == "not_documented"
+    assert unit.reads == [*reads_before, (0x0027, 1)]
+
+    unit.read_coils = AsyncMock(return_value=[True])
+    await read(hass, connection, {**message, "address": 0x1001})
+    unit.read_coils.assert_awaited_once_with(0x1001, 1)
+    assert connection.send_result.call_args.args[1]["raw"] == 1
+    unit.fail_addresses.add(0x0027)
+    await read(hass, connection, {**message, "address": 0x0027})
+    assert connection.send_error.call_args.args[1] == "read_failed"
+    assert not unit.writes
 
 
 async def harness(tmp_path, *, authorized=True):

@@ -200,3 +200,27 @@ gevonden; er zijn geen vaste `sensor.househeating_...`-aannames.
 Schakel gewenste diagnostische entiteiten eerst in. Genereer het document
 opnieuw na hernoemen of toevoegen. Bestaande eigen dashboards worden nooit
 automatisch vervangen, ook niet na een update van de integratie.
+
+## Registerbrowser
+
+Open als beheerder **HouseHeating-registers** in de zijbalk, of ga naar
+`/househeating-registers`. Selecteer je warmtepomp. De tabel volgt de bestaande
+Modbus-polls. Zoek op een naam, op `0x001C` voor een volledig woord, of op
+`0x001C:4` voor de relaisuitgang van de waterpomp van zone 1.
+
+- **Ververs weergave** haalt de huidige gegevens op bij Home Assistant.
+- **Lees** vraagt het getoonde adres rechtstreeks op bij de warmtepomp met de
+  gedeelde Modbus-verbinding. **Lees deze pagina** leest maximaal 25 afzonderlijke
+  adressen achtereen. **Lees alle resultaten** leest alle leesbare adressen die
+  bij de huidige filters passen. Dat kan enkele minuten duren. Met
+  **Stop na deze uitlezing** stopt de reeks na het lopende verzoek.
+  Niet-ondersteunde adressen kunnen een leesfout opleveren.
+- De tabel toont alle vermeldingen uit §4.4.3, inclusief gedocumenteerde bits.
+  Onbeschreven adresreeksen zijn samengevat. De PDF-pagina in de tabel verwijst
+  naar de technische handleiding `R290 HouseHeating-1.pdf`.
+- De kolom **Modbus-toegang** volgt de handleiding. Uitlezen op aanvraag is
+  beschikbaar voor individueel beschreven leesbare adressen. Voor spoelen is
+  protocol 130 of hoger vereist. De browser kan uitsluitend lezen.
+- **Exporteer JSON** exporteert alle rijen van het huidige filter en hun laatst
+  bekende waarden. Uitlezingen op aanvraag blijven beschikbaar zolang het paneel
+  open is. Ze maken geen entiteiten aan en werken de normale polling niet bij.

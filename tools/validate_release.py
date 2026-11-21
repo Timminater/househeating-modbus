@@ -28,7 +28,7 @@ def main():
     ]
     for key in ("domain", "documentation", "issue_tracker", "codeowners", "name", "version"):
         assert manifest[key], key
-    assert manifest["config_flow"] is True and manifest["dependencies"] == ["modbus"]
+    assert manifest["config_flow"] is True and manifest["dependencies"] == ["modbus", "panel_custom"]
     for path in COMPONENT.rglob("*.json"):
         json.loads(path.read_text(encoding="utf-8"))
     source = ROOT / "device_library/src/househeating_modbus"
@@ -48,6 +48,9 @@ def main():
             "monitoring.py",
             "operation.py",
             "dashboard.py",
+            "register_browser.py",
+            "register_browser.js",
+            "register_catalog.json",
             "services.yaml",
             "_vendor/househeating_modbus/operation.py",
             "_vendor/househeating_modbus/telemetry.py",
@@ -63,14 +66,15 @@ def main():
             if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc":
                 rel = path.relative_to(ROOT).as_posix()
                 assert archive.read(rel) == path.read_bytes(), rel
-        with tempfile.TemporaryDirectory(prefix="househeating-zip-check-", dir=ROOT.parent) as folder:
+        with tempfile.TemporaryDirectory(prefix="househeating-zip-check-", dir=ROOT / "dist") as folder:
             archive.extractall(folder)
             code = """
 import importlib, json, sys
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 for part in ('', '.config_flow', '.climate', '.water_heater', '.sensor', '.binary_sensor',
-             '.number', '.select', '.switch', '.button', '.diagnostics', '.monitoring', '.operation', '.dashboard'):
+             '.number', '.select', '.switch', '.button', '.diagnostics', '.monitoring', '.operation', '.dashboard',
+             '.register_browser'):
     importlib.import_module('custom_components.househeating' + part)
 from custom_components.househeating.config_flow import connection_schema
 import probatio
