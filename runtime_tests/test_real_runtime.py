@@ -49,8 +49,9 @@ async def test_register_browser_reads_only_documented_addresses(tmp_path, monkey
     )
     monkeypatch.setattr(hass, "http", SimpleNamespace(async_register_static_paths=AsyncMock()), raising=False)
     await browser.async_register_browser(hass)
-    panel = hass.data[DATA_PANELS][browser.PANEL_PATH]
+    panel = hass.data[DATA_PANELS][browser.REGISTER_PANEL_PATH]
     assert panel.require_admin and panel.config["_panel_custom"]["module_url"] == browser.SCRIPT_URL
+    assert panel.sidebar_title is None and panel.config_panel_domain is None
     handler, schema = hass.data["websocket_api"]["househeating/register_browser/read"]
     assert handler is browser.ws_read
     assert schema({"id": 1, "type": "househeating/register_browser/read", "entry_id": entry.entry_id, "address": 39})

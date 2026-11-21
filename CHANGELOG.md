@@ -1,5 +1,9 @@
 # Wijzigingen
 
+## 0.7.1 — 21 november 2026
+
+- Open de registerbrowser via het tandwiel van HouseHeating Modbus. De snelkoppeling selecteert de bijbehorende warmtepomp en de browser verdwijnt uit de zijbalk.
+
 ## 0.7.0 — 21 november 2026
 
 - **HouseHeating-registers** in de Home Assistant-zijbalk voor beheerders, met 854 rijen uit de Modbus-registerkaart, inclusief afzonderlijke statusbits.

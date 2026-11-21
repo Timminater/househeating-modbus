@@ -46,6 +46,7 @@
     "step": {
       "init": {
         "title": "HouseHeating opties",
+        "description": "[Open de registerbrowser]({register_browser_url}) om Modbus-registers te bekijken en uit te lezen.",
         "menu_options": {
           "control": "Uitlezen en bediening",
           "monitoring": "Energiemonitoring (alleen lezen)",

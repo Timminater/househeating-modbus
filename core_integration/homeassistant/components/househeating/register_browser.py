@@ -14,9 +14,8 @@ from homeassistant.core import callback
 from househeating_modbus import CommunicationError
 from househeating_modbus.models import decode
 from househeating_modbus.registers import BY_ADDRESS, WRITABLE_ADDRESSES
-from .const import DOMAIN
+from .const import DOMAIN, REGISTER_PANEL_PATH
 
-PANEL_PATH = "househeating-registers"
 SCRIPT_URL = "/househeating_static/register_browser.js"
 CATALOG_KEY = f"{DOMAIN}_register_catalog"
 
@@ -36,11 +35,9 @@ async def async_register_browser(hass):
         websocket_api.async_register_command(hass, command)
     await panel_custom.async_register_panel(
         hass,
-        frontend_url_path=PANEL_PATH,
+        frontend_url_path=REGISTER_PANEL_PATH,
         webcomponent_name="househeating-register-browser",
         module_url=SCRIPT_URL,
-        sidebar_title="HouseHeating-registers",
-        sidebar_icon="mdi:table-search",
         require_admin=True,
     )
 

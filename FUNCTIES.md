@@ -203,8 +203,9 @@ automatisch vervangen, ook niet na een update van de integratie.
 
 ## Registerbrowser
 
-Open als beheerder **HouseHeating-registers** in de zijbalk, of ga naar
-`/househeating-registers`. Selecteer je warmtepomp. De tabel volgt de bestaande
+Ga als beheerder naar **Instellingen → Apparaten en diensten → HouseHeating Modbus**.
+Open het tandwiel van je warmtepomp en klik op **Open de registerbrowser**.
+De tabel volgt de bestaande
 Modbus-polls. Zoek op een naam, op `0x001C` voor een volledig woord, of op
 `0x001C:4` voor de relaisuitgang van de waterpomp van zone 1.
 

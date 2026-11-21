@@ -21,7 +21,7 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.rows = [];
     this.writable = new Set();
-    this.entry = "";
+    this.entry = new URLSearchParams(window.location.search).get("config_entry") || "";
     this.snapshot = null;
     this.manual = new Map();
     this.errors = new Map();
@@ -43,15 +43,7 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
 
   set hass(value) {
     this._hass = value;
-    const menu = this.shadowRoot.querySelector("ha-menu-button");
-    if (menu) menu.hass = value;
     if (this.isConnected && !this.loaded) this.load();
-  }
-
-  set narrow(value) {
-    const menu = this.shadowRoot.querySelector("ha-menu-button");
-    if (menu) menu.narrow = value;
-    this._narrow = value;
   }
 
   build() {
@@ -68,6 +60,9 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
           border-bottom: 1px solid var(--divider-color, #d4dfe2); background: var(--app-header-background-color, #123943);
           color: var(--app-header-text-color, #fff); }
         h1 { font-size: 19px; font-weight: 600; margin: 0; }
+        header a { display: grid; place-items: center; min-width: 44px; min-height: 44px; color: inherit;
+          font-size: 24px; text-decoration: none; border-radius: 6px; }
+        header a:focus-visible { outline: 2px solid currentColor; }
         main { max-width: 1540px; margin: auto; padding: 22px; }
         .filters, .grid { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color, #d4dfe2);
           border-radius: 12px; }
@@ -115,7 +110,7 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
           td:nth-child(7) { grid-column: 2; grid-row: 4; }
         }
       </style>
-      <header><ha-menu-button></ha-menu-button><h1>HouseHeating-registers</h1></header>
+      <header><a href="/config/integrations/integration/househeating" aria-label="Terug naar de HouseHeating-integratie">←</a><h1>HouseHeating-registers</h1></header>
       <main>
         <div class="filters">
           <div class="field"><label for="device">Warmtepomp</label><select id="device"></select></div>
@@ -148,9 +143,6 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
         <footer><button id="prev" type="button">Vorige</button><span id="page"></span><button id="next" type="button">Volgende</button></footer>
       </main>`;
     this.ui = Object.fromEntries([...this.shadowRoot.querySelectorAll("[id]")].map((node) => [node.id, node]));
-    const menu = this.shadowRoot.querySelector("ha-menu-button");
-    menu.hass = this._hass;
-    menu.narrow = this._narrow;
     for (const key of ["query", "group", "access", "state"]) {
       this.ui[key].addEventListener(key === "query" ? "input" : "change", () => {
         this.page = 0;

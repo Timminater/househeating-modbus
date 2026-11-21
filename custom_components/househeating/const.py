@@ -1,6 +1,7 @@
 """Integration constants."""
 
 DOMAIN = "househeating"
+REGISTER_PANEL_PATH = "househeating-registers"
 DEFAULT_NAME = "HouseHeating"
 MINIMUM_HA = "2026.10.1"
 DEFAULT_OPTIONS = {

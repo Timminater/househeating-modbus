@@ -214,6 +214,9 @@ async def test_monitoring_options_never_probe_or_change_commissioning(tmp_path, 
     monkeypatch.setattr(config_flow, "probe", probe)
     menu = await flow.async_step_init()
     assert set(menu["menu_options"]) == {"control", "monitoring", "operation", "weather_curve"}
+    assert menu["description_placeholders"]["register_browser_url"] == (
+        f"/househeating-registers?config_entry={entry.entry_id}"
+    )
     form = await flow.async_step_monitoring()
     inputs = form["data_schema"]({"enabled": True, "thermal_confirmed": True})
     result = await flow.async_step_monitoring(inputs)

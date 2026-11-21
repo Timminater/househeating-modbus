@@ -46,6 +46,7 @@
     "step": {
       "init": {
         "title": "HouseHeating options",
+        "description": "[Open the register browser]({register_browser_url}) to inspect live Modbus values.",
         "menu_options": {
           "control": "Polling and control",
           "monitoring": "Energy monitoring (read only)",

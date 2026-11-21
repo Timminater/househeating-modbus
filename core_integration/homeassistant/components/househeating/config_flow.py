@@ -14,7 +14,7 @@ from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig,
 
 from househeating_modbus import BY_KEY, HeatPump, HeatPumpError
 from .connection import connection_params, device_config, normalize_connection
-from .const import DEFAULT_NAME, DEFAULT_OPTIONS, DOMAIN
+from .const import DEFAULT_NAME, DEFAULT_OPTIONS, DOMAIN, REGISTER_PANEL_PATH
 
 
 def connection_schema(defaults: dict[str, Any]):
@@ -165,7 +165,11 @@ class HouseHeatingOptionsFlow(OptionsFlowWithReload):
         if user_input is not None:
             return await self.async_step_control(user_input)
         return self.async_show_menu(
-            step_id="init", menu_options=["control", "monitoring", "operation", "weather_curve"]
+            step_id="init",
+            menu_options=["control", "monitoring", "operation", "weather_curve"],
+            description_placeholders={
+                "register_browser_url": f"/{REGISTER_PANEL_PATH}?config_entry={self.config_entry.entry_id}"
+            },
         )
 
     async def async_step_operation(self, user_input=None):
