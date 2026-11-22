@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from hashlib import sha256
 from pathlib import Path
 
 import voluptuous as vol
@@ -18,7 +19,7 @@ from ._vendor.househeating_modbus.operation import INPUT_FLAGS, RELAY_FLAGS
 from ._vendor.househeating_modbus.registers import BY_ADDRESS, FAULT_LABELS, WRITABLE_ADDRESSES
 from .const import DOMAIN, REGISTER_PANEL_PATH
 
-SCRIPT_URL = "/househeating_static/register_browser.js"
+SCRIPT_PATH = Path(__file__).with_name("register_browser.js")
 CATALOG_KEY = f"{DOMAIN}_register_catalog"
 ENTITY_REGISTERS = {
     **{register.key: (address, None) for address, register in BY_ADDRESS.items()},
@@ -33,24 +34,25 @@ ENTITY_REGISTERS = {
 }
 
 
-def _load_catalog():
-    return json.loads(Path(__file__).with_name("register_catalog.json").read_text(encoding="utf-8"))
+def _load_assets():
+    catalog = json.loads(Path(__file__).with_name("register_catalog.json").read_text(encoding="utf-8"))
+    revision = sha256(SCRIPT_PATH.read_bytes()).hexdigest()[:16]
+    return catalog, revision
 
 
 async def async_register_browser(hass):
-    catalog = await hass.async_add_executor_job(_load_catalog)
+    catalog, revision = await hass.async_add_executor_job(_load_assets)
+    script_url = f"/househeating_static/register_browser-{revision}.js"
     readable = frozenset(address for address, _, bit, *_, allowed in catalog if bit is None and allowed)
     hass.data[CATALOG_KEY] = (catalog, readable)
-    await hass.http.async_register_static_paths(
-        [StaticPathConfig(SCRIPT_URL, str(Path(__file__).with_name("register_browser.js")), False)]
-    )
+    await hass.http.async_register_static_paths([StaticPathConfig(script_url, str(SCRIPT_PATH), False)])
     for command in (ws_catalog, ws_snapshot, ws_read):
         websocket_api.async_register_command(hass, command)
     await panel_custom.async_register_panel(
         hass,
         frontend_url_path=REGISTER_PANEL_PATH,
-        webcomponent_name="househeating-register-browser",
-        module_url=SCRIPT_URL,
+        webcomponent_name=f"househeating-register-browser-{revision}",
+        module_url=script_url,
         require_admin=True,
     )
 

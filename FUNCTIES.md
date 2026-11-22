@@ -223,9 +223,10 @@ HouseHeating-regeling.
 
 Ga als beheerder naar **Instellingen → Apparaten en diensten → HouseHeating Modbus**.
 Open het tandwiel van je warmtepomp en klik op **Open de registerbrowser**.
-De kolom **HA-entiteiten** toont geregistreerde entiteiten per adres of bit.
-Gebruik **Inschakelen** bij een uitgeschakelde entiteit. Home Assistant kan
-even nodig hebben om de entiteit te laden. Filter met **HA-entiteit** op
+De kolom **Register en HA-entiteiten** toont geregistreerde entiteiten per adres of bit.
+Gebruik **Inschakelen** of **Uitschakelen** onder de naam van de entiteit. Dit
+wijzigt de entiteitsinstelling in Home Assistant. Home Assistant kan even nodig
+hebben om een ingeschakelde entiteit te laden. Filter met **HA-entiteit** op
 ingeschakelde of uitgeschakelde entiteiten, of op registers zonder entiteit.
 Zoek op `0x001C:4` voor de binaire sensor voor het relais van waterpomp zone 1.
 Zet **Extra registergroepen uitlezen** aan voor periodieke waarden van dit relais.

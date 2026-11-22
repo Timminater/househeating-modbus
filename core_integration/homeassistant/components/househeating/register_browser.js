@@ -26,8 +26,8 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
     this.manual = new Map();
     this.errors = new Map();
     this.busy = new Set();
-    this.enabling = new Set();
-    this.enableErrors = new Map();
+    this.updatingEntities = new Set();
+    this.entityErrors = new Map();
     this.page = 0;
   }
 
@@ -93,7 +93,9 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
         .value { font-weight: 680; white-space: nowrap; }
         .warn { color: var(--error-color, #9c322f); }
         td button { min-height: 30px; padding: 3px 8px; }
+        .entities { margin-top: 8px; }
         .entity { overflow-wrap: anywhere; }
+        .entity button { margin-top: 4px; }
         .entity + .entity { margin-top: 8px; }
         footer { display:flex; justify-content: end; align-items: center; gap: 9px; padding: 12px 0; }
         @media(max-width: 660px) {
@@ -112,7 +114,6 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
           td:nth-child(3)::before, td:nth-child(4)::before, td:nth-child(5)::before {
             display: block; font-size: 12px; font-weight: 400; color: var(--secondary-text-color, #46636a); }
           td:nth-child(7) { grid-column: 2; grid-row: 4; }
-          td:nth-child(8) { grid-column: 1 / -1; border-top: 1px solid var(--divider-color, #d4dfe2); padding-top: 8px; }
         }
       </style>
       <header><a href="/config/integrations/integration/househeating" aria-label="Terug naar de HouseHeating-integratie">←</a><h1>HouseHeating-registers</h1></header>
@@ -144,9 +145,9 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
         </div>
         <div class="grid"><div class="scroll" tabindex="0" aria-label="Modbus-registertabel">
           <table><thead><tr>
-            <th scope="col">Adres / bit</th><th scope="col">Register</th><th scope="col">Waarde</th>
+            <th scope="col">Adres / bit</th><th scope="col">Register en HA-entiteiten</th><th scope="col">Waarde</th>
             <th scope="col">Ruw</th><th scope="col">Laatst gelezen</th>
-            <th scope="col">Modbus-toegang</th><th scope="col">Uitlezen</th><th scope="col">HA-entiteiten</th>
+            <th scope="col">Modbus-toegang</th><th scope="col">Uitlezen</th>
           </tr></thead><tbody></tbody></table>
         </div></div>
         <footer><button id="prev" type="button">Vorige</button><span id="page"></span><button id="next" type="button">Volgende</button></footer>
@@ -317,6 +318,8 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
   }
 
   render() {
+    this.ui.entityFilter.disabled = !this.snapshot?.entities;
+    if (this.ui.entityFilter.disabled) this.ui.entityFilter.value = "";
     const rows = this.filtered();
     const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
     this.page = Math.min(Math.max(0, this.page), pages - 1);
@@ -325,7 +328,7 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
     if (!visible.length) {
       const row = element("tr");
       const cell = element("td", this.loaded ? "Geen registers gevonden." : "Registerkaart laden…");
-      cell.colSpan = 8;
+      cell.colSpan = 7;
       row.append(cell);
       body.replaceChildren(row);
     } else {
@@ -356,6 +359,15 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
     const nameCell = element("td", name);
     this.sub(nameCell, group + " · PDF p. " + pdf);
     if (detail) this.sub(nameCell, detail);
+    if (this.snapshot?.entry_id) {
+      const entities = end === address ? this.entities(address, bit) : [];
+      if (entities.length) {
+        const entityList = element("div");
+        entityList.className = "entities";
+        for (const entity of entities) entityList.append(this.renderEntity(entity));
+        nameCell.append(entityList);
+      } else if (this.snapshot.entities) this.sub(nameCell, "Geen HA-entiteit");
+    }
     const current = element("td");
     if (sample && bit != null) current.textContent = (sample.raw & (1 << bit)) ? "1 · actief" : "0 · inactief";
     else if (sample?.value != null) current.textContent = sample.value + (sample.unit ? " " + sample.unit : "");
@@ -388,11 +400,7 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
       if (address >= 0x1000 && !(this.snapshot?.protocol >= 130)) this.sub(action, "Protocol ≥ 130 vereist");
     } else action.textContent = "—";
     if (error) this.sub(action, error, "warn");
-    const entityCell = element("td");
-    const entities = end === address ? this.entities(address, bit) : [];
-    if (!entities.length) entityCell.textContent = this.snapshot?.entry_id ? "Geen entiteit" : "—";
-    for (const entity of entities) entityCell.append(this.renderEntity(entity));
-    row.append(addressCell, nameCell, current, raw, timestamp, accessCell, action, entityCell);
+    row.append(addressCell, nameCell, current, raw, timestamp, accessCell, action);
     return row;
   }
 
@@ -406,32 +414,39 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
       const state = this._hass.states?.[entity.id]?.state;
       this.sub(node, state == null ? "Ingeschakeld · wacht op status" :
         state === "unavailable" ? "Ingeschakeld · niet beschikbaar" : "Ingeschakeld");
-    } else {
-      this.sub(node, "Uitgeschakeld");
-      const button = element("button", this.enabling.has(entity.id) ? "Schakelt in…" : "Inschakelen");
-      button.type = "button";
-      button.disabled = this.enabling.has(entity.id) || !!this.fetchError;
-      button.setAttribute("aria-label", "Schakel entiteit in: " + entity.id);
-      button.onclick = () => this.enableEntity(entity.id);
-      node.append(button);
-    }
-    const error = this.enableErrors.get(entity.id);
+    } else this.sub(node, "Uitgeschakeld");
+    const label = entity.enabled ? "Uitschakelen" : "Inschakelen";
+    const pending = this.updatingEntities.has(entity.id);
+    const button = element("button", pending ? "Bezig…" : label);
+    button.type = "button";
+    button.disabled = pending || !!this.fetchError;
+    button.dataset.entity = entity.id;
+    button.setAttribute("aria-label", label + ": " + (entity.name || entity.id));
+    button.onclick = async () => {
+      await this.setEntityEnabled(entity.id, !entity.enabled);
+      this.shadowRoot.querySelector('button[data-entity="' + CSS.escape(entity.id) + '"]')?.focus();
+    };
+    node.append(button);
+    const error = this.entityErrors.get(entity.id);
     if (error) this.sub(node, error, "warn");
     return node;
   }
 
-  async enableEntity(entityId) {
-    if (this.enabling.has(entityId)) return;
-    this.enabling.add(entityId);
-    this.enableErrors.delete(entityId);
+  async setEntityEnabled(entityId, enabled) {
+    if (this.updatingEntities.has(entityId)) return;
+    this.updatingEntities.add(entityId);
+    this.entityErrors.delete(entityId);
     this.render();
     try {
-      await this._hass.callWS({ type: "config/entity_registry/update", entity_id: entityId, disabled_by: null });
+      await this._hass.callWS({
+        type: "config/entity_registry/update", entity_id: entityId, disabled_by: enabled ? null : "user",
+      });
       await this.refresh();
     } catch {
-      this.enableErrors.set(entityId, "Inschakelen mislukt. Controleer de entiteit in Home Assistant.");
+      const action = enabled ? "Inschakelen" : "Uitschakelen";
+      this.entityErrors.set(entityId, action + " mislukt. Controleer de entiteit in Home Assistant.");
     } finally {
-      this.enabling.delete(entityId);
+      this.updatingEntities.delete(entityId);
       if (this.isConnected) this.render();
     }
   }
@@ -461,7 +476,9 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
   }
 }
 
-if (!customElements.get("househeating-register-browser")) {
-  customElements.define("househeating-register-browser", HouseHeatingRegisterBrowser);
+const revision = /register_browser-([a-f0-9]{16})\.js$/.exec(new URL(import.meta.url).pathname)?.[1];
+const componentName = revision ? `househeating-register-browser-${revision}` : "househeating-register-browser";
+if (!customElements.get(componentName)) {
+  customElements.define(componentName, HouseHeatingRegisterBrowser);
 }
 

@@ -4,6 +4,7 @@ import asyncio
 import importlib
 import sys
 from contextlib import asynccontextmanager
+from hashlib import sha256
 from pathlib import Path
 from types import MappingProxyType, SimpleNamespace
 from unittest.mock import AsyncMock, Mock
@@ -55,7 +56,11 @@ async def test_register_browser_reads_only_documented_addresses(tmp_path, monkey
     monkeypatch.setattr(hass, "http", SimpleNamespace(async_register_static_paths=AsyncMock()), raising=False)
     await browser.async_register_browser(hass)
     panel = hass.data[DATA_PANELS][browser.REGISTER_PANEL_PATH]
-    assert panel.require_admin and panel.config["_panel_custom"]["module_url"] == browser.SCRIPT_URL
+    revision = sha256(browser.SCRIPT_PATH.read_bytes()).hexdigest()[:16]
+    script_url = f"/househeating_static/register_browser-{revision}.js"
+    assert panel.require_admin and panel.config["_panel_custom"]["module_url"] == script_url
+    assert panel.config["_panel_custom"]["name"] == f"househeating-register-browser-{revision}"
+    assert hass.http.async_register_static_paths.call_args.args[0][0].url_path == script_url
     assert panel.sidebar_title is None and panel.config_panel_domain is None
     handler, schema = hass.data["websocket_api"]["househeating/register_browser/read"]
     assert handler is browser.ws_read
@@ -86,6 +91,9 @@ async def test_register_browser_reads_only_documented_addresses(tmp_path, monkey
     registry.async_update_entity(relay.entity_id, disabled_by=None)
     browser.ws_snapshot(hass, connection, message)
     assert connection.send_result.call_args.args[1]["entities"]["28:4"][0]["enabled"]
+    registry.async_update_entity(relay.entity_id, disabled_by=er.RegistryEntryDisabler.USER)
+    browser.ws_snapshot(hass, connection, message)
+    assert not connection.send_result.call_args.args[1]["entities"]["28:4"][0]["enabled"]
     assert unit.reads == reads_before
 
     read = unwrap(browser.ws_read)

@@ -1,5 +1,10 @@
 # Wijzigingen
 
+## 0.9.1 — 22 november 2026
+
+- Laadt de registerbrowser via een unieke URL per bestandsversie, zodat Home Assistant bijgewerkte browsercode ophaalt.
+- Toont de status van gekoppelde Home Assistant-entiteiten direct onder de registernaam, met knoppen voor in- en uitschakelen.
+
 ## 0.9.0 — 22 november 2026
 
 - Groepeert entiteiten onder Watercircuit, Compressor, Energie, Warm tapwater (indien gedetecteerd) en In- en uitgangen. Dagelijkse bediening, aanvoer, retour en actieve storing blijven op het hoofdapparaat.
