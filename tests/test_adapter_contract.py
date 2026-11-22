@@ -123,7 +123,12 @@ async def test_every_entity_constructs_and_controls_are_locked(modules):
         assert entities
         assert len({e._attr_unique_id for e in entities}) == len(entities)
         for entity in entities:
-            assert entity.device_info["identifiers"] == {("househeating", "stable_entry")}
+            info = entity.device_info
+            if "parent_device_id" in info:
+                assert info["parent_device_id"] == "parent-device"
+                assert info["identifiers"] == {("househeating", f"stable_entry_{info['translation_key']}")}
+            else:
+                assert info["identifiers"] == {("househeating", "stable_entry")}
             assert isinstance(entity.available, bool)
             if name in ("number", "select", "switch"):
                 assert not entity.available

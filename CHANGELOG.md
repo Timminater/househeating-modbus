@@ -1,5 +1,15 @@
 # Wijzigingen
 
+## 0.9.0 — 22 november 2026
+
+- Groepeert entiteiten onder Watercircuit, Compressor, Energie, Warm tapwater (indien gedetecteerd) en In- en uitgangen. Dagelijkse bediening, aanvoer, retour en actieve storing blijven op het hoofdapparaat.
+- Voegt optionele binaire sensoren toe voor het zone-2-pomprelais en gedocumenteerde ingangssignalen, waaronder de kamerthermostaat en waterstroomschakelaar.
+
+## 0.8.0 — 22 november 2026
+
+- De registerbrowser toont of een gekoppelde Home Assistant-entiteit is ingeschakeld en laat uitgeschakelde entiteiten direct inschakelen.
+- Het relais van waterpomp zone 1 (`0x001C:4`) is beschikbaar als optionele binaire sensor.
+
 ## 0.7.1 — 21 november 2026
 
 - Open de registerbrowser via het tandwiel van HouseHeating Modbus. De snelkoppeling selecteert de bijbehorende warmtepomp en de browser verdwijnt uit de zijbalk.

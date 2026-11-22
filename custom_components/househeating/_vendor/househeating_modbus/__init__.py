@@ -13,7 +13,7 @@ from .models import (
 )
 from .registers import BINARY_FLAGS, BY_KEY, MODE_OPTIONS, REGISTERS, SELECTS, SETPOINT_KEYS, OperatingMode
 
-__version__ = "0.7.1"
+__version__ = "0.9.0"
 __all__ = [
     "HeatPump",
     "DeviceConfig",

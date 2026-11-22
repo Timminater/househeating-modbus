@@ -152,7 +152,15 @@ def install(monkeypatch):
         "homeassistant.helpers.entity",
         EntityCategory=StrEnum("EntityCategory", {"DIAGNOSTIC": "diagnostic", "CONFIG": "config"}),
     )
-    module("homeassistant.helpers.device_registry", DeviceInfo=dict)
+    module(
+        "homeassistant.helpers.device_registry",
+        DeviceInfo=dict,
+        ChildDeviceInfo=dict,
+        async_get=lambda hass: SimpleNamespace(
+            async_get_device_by_identifier=lambda *args: SimpleNamespace(id="parent-device"),
+            async_get_child_device_by_identifier=lambda *args: None,
+        ),
+    )
     module(
         "homeassistant.helpers.update_coordinator",
         DataUpdateCoordinator=Coordinator,

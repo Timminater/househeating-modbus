@@ -4,7 +4,7 @@ from homeassistant.components.binary_sensor import BinarySensorDeviceClass, Bina
 from homeassistant.helpers.entity import EntityCategory
 
 from ._vendor.househeating_modbus import BINARY_FLAGS
-from ._vendor.househeating_modbus.operation import RELAY_FLAGS, relay_value
+from ._vendor.househeating_modbus.operation import INPUT_FLAGS, RELAY_FLAGS, io_bit_value
 from ._vendor.househeating_modbus.registers import FAULT_LABELS
 from .entity import HouseHeatingEntity
 
@@ -16,7 +16,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
             HouseHeatingBinary(entry.runtime_data, "control_enabled"),
         ]
     )
-    async_add_entities(RelayBinary(entry.runtime_data, key) for key in RELAY_FLAGS)
+    async_add_entities(
+        IOBinary(entry.runtime_data, key, address, bit) for key, (address, bit) in (RELAY_FLAGS | INPUT_FLAGS).items()
+    )
     async_add_entities(
         FaultBinary(entry.runtime_data, address, bit, label)
         for address, bits in FAULT_LABELS.items()
@@ -48,14 +50,21 @@ class HouseHeatingBinary(HouseHeatingEntity, BinarySensorEntity):
         return None
 
 
-class RelayBinary(HouseHeatingEntity, BinarySensorEntity):
+class IOBinary(HouseHeatingEntity, BinarySensorEntity):
     _attr_entity_registry_enabled_default = False
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
+    def __init__(self, coordinator, key, address, bit):
+        super().__init__(coordinator, key)
+        self.address, self.bit = address, bit
+
     @property
     def is_on(self):
-        return relay_value(
-            self.coordinator.device.snapshot, self.key, max(90, 2.5 * self.coordinator.update_interval.total_seconds())
+        return io_bit_value(
+            self.coordinator.device.snapshot,
+            self.address,
+            self.bit,
+            max(90, 2.5 * self.coordinator.update_interval.total_seconds()),
         )
 
     @property
@@ -64,12 +73,12 @@ class RelayBinary(HouseHeatingEntity, BinarySensorEntity):
 
     @property
     def extra_state_attributes(self):
-        address, bit = RELAY_FLAGS[self.key]
+        is_input = self.key in INPUT_FLAGS
         return {
-            "register": f"0x{address:04X}",
-            "bit": bit,
-            "manual_pdf_pages": [173, 174],
-            "measurement_origin": "reported_relay_status",
+            "register": f"0x{self.address:04X}",
+            "bit": self.bit,
+            "manual_pdf_pages": [175] if is_input else [173, 174],
+            "measurement_origin": "reported_input_status" if is_input else "reported_relay_status",
         }
 
 

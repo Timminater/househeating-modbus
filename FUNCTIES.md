@@ -201,10 +201,34 @@ Schakel gewenste diagnostische entiteiten eerst in. Genereer het document
 opnieuw na hernoemen of toevoegen. Bestaande eigen dashboards worden nooit
 automatisch vervangen, ook niet na een update van de integratie.
 
+## Subapparaten
+
+Het hoofdapparaat bundelt aan/uit, bedrijfsmodus, verwarmings- en koelsetpoints,
+aanvoer, retour en de actieve storing. De bestaande entiteits-ID's blijven behouden.
+
+| Subapparaat | Inhoud |
+|---|---|
+| Watercircuit | Debiet, temperatuurverschil, pomp-PWM, buffer- en zonetemperaturen en mengklepstanden. |
+| Compressor | Werkelijke frequentie, compressorstatus, starts en draaiuren, verdamper, expansieventielen en ontdooien. |
+| Energie | Elektrisch en thermisch vermogen, energie, fasewaarden, COP en EER voor zover beschikbaar. |
+| Warm tapwater | Boilertemperatuur, tapwatersetpoint en sterilisatiestatus. De groep verschijnt zodra Home Assistant bij het laden tapwaterondersteuning detecteert. |
+| In- en uitgangen | Gemelde relaisstatussen, zoals zonepompen en omschakelkleppen, en gemelde contacten, zoals de kamerthermostaat en waterstroomschakelaar. |
+
+Schakel **Extra registergroepen uitlezen** in voor de I/O-statussen. De
+afzonderlijke contacten en relais kun je in de registerbrowser inschakelen als
+binaire sensoren. Deze entiteiten rapporteren de uitgang of ingang van de
+HouseHeating-regeling.
+
 ## Registerbrowser
 
 Ga als beheerder naar **Instellingen → Apparaten en diensten → HouseHeating Modbus**.
 Open het tandwiel van je warmtepomp en klik op **Open de registerbrowser**.
+De kolom **HA-entiteiten** toont geregistreerde entiteiten per adres of bit.
+Gebruik **Inschakelen** bij een uitgeschakelde entiteit. Home Assistant kan
+even nodig hebben om de entiteit te laden. Filter met **HA-entiteit** op
+ingeschakelde of uitgeschakelde entiteiten, of op registers zonder entiteit.
+Zoek op `0x001C:4` voor de binaire sensor voor het relais van waterpomp zone 1.
+Zet **Extra registergroepen uitlezen** aan voor periodieke waarden van dit relais.
 De tabel volgt de bestaande
 Modbus-polls. Zoek op een naam, op `0x001C` voor een volledig woord, of op
 `0x001C:4` voor de relaisuitgang van de waterpomp van zone 1.

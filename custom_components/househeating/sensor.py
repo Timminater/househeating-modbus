@@ -138,6 +138,8 @@ class MonitoringSensor(HouseHeatingEntity, SensorEntity):
 
     def __init__(self, coordinator, key, unit, device_class, state_class):
         super().__init__(coordinator, key)
+        if self._subdevice is None:
+            self._subdevice = "energy"
         self._attr_native_unit_of_measurement = unit
         self._attr_device_class = SensorDeviceClass(device_class) if device_class else None
         self._attr_state_class = SensorStateClass(state_class) if state_class else None

@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 from .telemetry import period_bounds
 
-# PDF p173-174: 0x0019/0x001A relay outputs. Relay status is not proof of heat production.
+# PDF p173-174: relay outputs. Relay status is not proof of heat production.
 RELAY_FLAGS = {
     "compressor_active": (0x1A, 0),
     "fan_active": (0x1A, 5),
@@ -26,13 +26,26 @@ RELAY_FLAGS = {
     "floor_three_way_valve_active": (0x19, 15),
     "four_way_valve_active": (0x1A, 3),
     "auxiliary_pump_active": (0x1A, 8),
+    "zone_1_pump_active": (0x1C, 4),
+    "zone_2_pump_active": (0x1C, 3),
+}
+INPUT_FLAGS = {
+    "water_flow_switch_closed": (0x1D, 8),
+    "room_thermostat_contact_closed": (0x1D, 10),
+    "dhw_ahs_contact_closed": (0x1D, 11),
+    "emergency_contact_closed": (0x1D, 13),
+    "buffer_ahs_contact_closed": (0x1F, 5),
 }
 
 
 def relay_value(snapshot, key, max_age=90):
+    return io_bit_value(snapshot, *RELAY_FLAGS[key], max_age)
+
+
+def io_bit_value(snapshot, address, bit, max_age=90):
+    """Read a reported I/O bit only while its sample is current."""
     if snapshot is None:
         return None
-    address, bit = RELAY_FLAGS[key]
     window = snapshot.samples.get(address)
     if (
         window is None

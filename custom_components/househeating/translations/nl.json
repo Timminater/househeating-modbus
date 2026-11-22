@@ -186,6 +186,23 @@
       }
     }
   },
+  "device": {
+    "water_circuit": {
+      "name": "Watercircuit"
+    },
+    "compressor": {
+      "name": "Compressor"
+    },
+    "energy": {
+      "name": "Energie"
+    },
+    "domestic_hot_water": {
+      "name": "Warm tapwater"
+    },
+    "io": {
+      "name": "In- en uitgangen"
+    }
+  },
   "entity": {
     "sensor": {
       "status_1": {
@@ -985,6 +1002,27 @@
       },
       "auxiliary_pump_active": {
         "name": "Secundaire verwarmingspomp actief"
+      },
+      "zone_1_pump_active": {
+        "name": "Relais waterpomp zone 1 actief"
+      },
+      "zone_2_pump_active": {
+        "name": "Relais waterpomp zone 2 actief"
+      },
+      "water_flow_switch_closed": {
+        "name": "Waterstroomschakelaar gesloten"
+      },
+      "room_thermostat_contact_closed": {
+        "name": "Kamerthermostaatcontact gesloten"
+      },
+      "dhw_ahs_contact_closed": {
+        "name": "Contact hulpwarmtebron tapwater gesloten"
+      },
+      "emergency_contact_closed": {
+        "name": "Noodcontact gesloten"
+      },
+      "buffer_ahs_contact_closed": {
+        "name": "Contact hulpwarmtebron buffervat gesloten"
       },
       "fault_0002_wrong_phase": {
         "name": "Verkeerde fase"

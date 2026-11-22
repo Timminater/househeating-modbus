@@ -26,6 +26,8 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
     this.manual = new Map();
     this.errors = new Map();
     this.busy = new Set();
+    this.enabling = new Set();
+    this.enableErrors = new Map();
     this.page = 0;
   }
 
@@ -91,6 +93,8 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
         .value { font-weight: 680; white-space: nowrap; }
         .warn { color: var(--error-color, #9c322f); }
         td button { min-height: 30px; padding: 3px 8px; }
+        .entity { overflow-wrap: anywhere; }
+        .entity + .entity { margin-top: 8px; }
         footer { display:flex; justify-content: end; align-items: center; gap: 9px; padding: 12px 0; }
         @media(max-width: 660px) {
           main { padding: 12px; }
@@ -108,6 +112,7 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
           td:nth-child(3)::before, td:nth-child(4)::before, td:nth-child(5)::before {
             display: block; font-size: 12px; font-weight: 400; color: var(--secondary-text-color, #46636a); }
           td:nth-child(7) { grid-column: 2; grid-row: 4; }
+          td:nth-child(8) { grid-column: 1 / -1; border-top: 1px solid var(--divider-color, #d4dfe2); padding-top: 8px; }
         }
       </style>
       <header><a href="/config/integrations/integration/househeating" aria-label="Terug naar de HouseHeating-integratie">←</a><h1>HouseHeating-registers</h1></header>
@@ -119,6 +124,10 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
           <div class="field"><label for="state">Waarde</label><select id="state">
             <option value="">Alle waarden</option><option value="read">Met uitlezing</option>
             <option value="empty">Zonder uitlezing</option><option value="error">Leesfout</option>
+          </select></div>
+          <div class="field"><label for="entityFilter">HA-entiteit</label><select id="entityFilter">
+            <option value="">Alle registers</option><option value="enabled">Ingeschakeld</option>
+            <option value="disabled">Uitgeschakeld</option><option value="none">Geen entiteit</option>
           </select></div>
           <div class="field"><label for="access">Modbus-toegang</label><select id="access">
             <option value="">Alle toegangstypen</option><option value="R">Alleen lezen</option>
@@ -137,13 +146,13 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
           <table><thead><tr>
             <th scope="col">Adres / bit</th><th scope="col">Register</th><th scope="col">Waarde</th>
             <th scope="col">Ruw</th><th scope="col">Laatst gelezen</th>
-            <th scope="col">Modbus-toegang</th><th scope="col">Uitlezen</th>
+            <th scope="col">Modbus-toegang</th><th scope="col">Uitlezen</th><th scope="col">HA-entiteiten</th>
           </tr></thead><tbody></tbody></table>
         </div></div>
         <footer><button id="prev" type="button">Vorige</button><span id="page"></span><button id="next" type="button">Volgende</button></footer>
       </main>`;
     this.ui = Object.fromEntries([...this.shadowRoot.querySelectorAll("[id]")].map((node) => [node.id, node]));
-    for (const key of ["query", "group", "access", "state"]) {
+    for (const key of ["query", "group", "access", "state", "entityFilter"]) {
       this.ui[key].addEventListener(key === "query" ? "input" : "change", () => {
         this.page = 0;
         this.render();
@@ -220,24 +229,35 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
     return manual && (!poll || manual.at > poll.at) ? manual : poll;
   }
 
+  entities(address, bit) {
+    const key = bit == null ? String(address) : address + ":" + bit;
+    return this.snapshot?.entities?.[key] ?? [];
+  }
+
   filtered() {
     const query = this.ui.query.value.trim().toLowerCase();
     const group = this.ui.group.value;
     const state = this.ui.state.value;
     const access = this.ui.access.value;
+    const entityFilter = this.ui.entityFilter.value;
     return this.rows.filter(([address, end, bit, category, name, mode, , detail]) => {
       if (group && group !== category) return false;
       if (access && mode.split(" · ")[0] !== access) return false;
       if (state === "read" && !this.sample(address)) return false;
       if (state === "empty" && this.sample(address)) return false;
       if (state === "error" && !this.errors.has(this.readKey(address))) return false;
+      const entities = end === address ? this.entities(address, bit) : [];
+      if (entityFilter === "enabled" && !entities.some((entity) => entity.enabled)) return false;
+      if (entityFilter === "disabled" && !entities.some((entity) => !entity.enabled)) return false;
+      if (entityFilter === "none" && entities.length) return false;
       if (!query) return true;
       const addressQuery = /^0x([0-9a-f]{1,4})(?::(\d{1,2}))?$/.exec(query);
       if (addressQuery) {
         const parsed = parseInt(addressQuery[1], 16);
         return address <= parsed && end >= parsed && (addressQuery[2] == null || bit === Number(addressQuery[2]));
       }
-      return [hex(address), hex(end), category, name, detail].join(" ").toLowerCase().includes(query);
+      return [hex(address), hex(end), category, name, detail, ...entities.flatMap((entity) => [entity.id, entity.name])]
+        .join(" ").toLowerCase().includes(query);
     });
   }
 
@@ -305,7 +325,7 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
     if (!visible.length) {
       const row = element("tr");
       const cell = element("td", this.loaded ? "Geen registers gevonden." : "Registerkaart laden…");
-      cell.colSpan = 7;
+      cell.colSpan = 8;
       row.append(cell);
       body.replaceChildren(row);
     } else {
@@ -368,8 +388,52 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
       if (address >= 0x1000 && !(this.snapshot?.protocol >= 130)) this.sub(action, "Protocol ≥ 130 vereist");
     } else action.textContent = "—";
     if (error) this.sub(action, error, "warn");
-    row.append(addressCell, nameCell, current, raw, timestamp, accessCell, action);
+    const entityCell = element("td");
+    const entities = end === address ? this.entities(address, bit) : [];
+    if (!entities.length) entityCell.textContent = this.snapshot?.entry_id ? "Geen entiteit" : "—";
+    for (const entity of entities) entityCell.append(this.renderEntity(entity));
+    row.append(addressCell, nameCell, current, raw, timestamp, accessCell, action, entityCell);
     return row;
+  }
+
+  renderEntity(entity) {
+    const node = element("div");
+    node.className = "entity";
+    const name = element("div", entity.name || entity.id);
+    name.title = entity.id;
+    node.append(name);
+    if (entity.enabled) {
+      const state = this._hass.states?.[entity.id]?.state;
+      this.sub(node, state == null ? "Ingeschakeld · wacht op status" :
+        state === "unavailable" ? "Ingeschakeld · niet beschikbaar" : "Ingeschakeld");
+    } else {
+      this.sub(node, "Uitgeschakeld");
+      const button = element("button", this.enabling.has(entity.id) ? "Schakelt in…" : "Inschakelen");
+      button.type = "button";
+      button.disabled = this.enabling.has(entity.id) || !!this.fetchError;
+      button.setAttribute("aria-label", "Schakel entiteit in: " + entity.id);
+      button.onclick = () => this.enableEntity(entity.id);
+      node.append(button);
+    }
+    const error = this.enableErrors.get(entity.id);
+    if (error) this.sub(node, error, "warn");
+    return node;
+  }
+
+  async enableEntity(entityId) {
+    if (this.enabling.has(entityId)) return;
+    this.enabling.add(entityId);
+    this.enableErrors.delete(entityId);
+    this.render();
+    try {
+      await this._hass.callWS({ type: "config/entity_registry/update", entity_id: entityId, disabled_by: null });
+      await this.refresh();
+    } catch {
+      this.enableErrors.set(entityId, "Inschakelen mislukt. Controleer de entiteit in Home Assistant.");
+    } finally {
+      this.enabling.delete(entityId);
+      if (this.isConnected) this.render();
+    }
   }
 
   sub(parent, label, extraClass = "") {
@@ -385,6 +449,7 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
       sample: this.sample(address) ?? null,
       bit_value: bit != null && this.sample(address) ? (this.sample(address).raw >> bit) & 1 : null,
       error: this.errors.get(this.readKey(address)) ?? null,
+      entities: end === address ? this.entities(address, bit) : [],
     }));
     const url = URL.createObjectURL(new Blob([JSON.stringify({ device: this.ui.device.selectedOptions[0]?.text, rows }, null, 2)],
       { type: "application/json" }));

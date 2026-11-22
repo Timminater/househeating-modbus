@@ -186,6 +186,23 @@
       }
     }
   },
+  "device": {
+    "water_circuit": {
+      "name": "Water circuit"
+    },
+    "compressor": {
+      "name": "Compressor"
+    },
+    "energy": {
+      "name": "Energy"
+    },
+    "domestic_hot_water": {
+      "name": "Domestic hot water"
+    },
+    "io": {
+      "name": "Inputs and outputs"
+    }
+  },
   "entity": {
     "sensor": {
       "status_1": {
@@ -985,6 +1002,27 @@
       },
       "auxiliary_pump_active": {
         "name": "Auxiliary pump active"
+      },
+      "zone_1_pump_active": {
+        "name": "Zone 1 pump relay active"
+      },
+      "zone_2_pump_active": {
+        "name": "Zone 2 pump relay active"
+      },
+      "water_flow_switch_closed": {
+        "name": "Water flow switch closed"
+      },
+      "room_thermostat_contact_closed": {
+        "name": "Room thermostat contact closed"
+      },
+      "dhw_ahs_contact_closed": {
+        "name": "Hot water auxiliary heat source contact closed"
+      },
+      "emergency_contact_closed": {
+        "name": "Emergency contact closed"
+      },
+      "buffer_ahs_contact_closed": {
+        "name": "Buffer auxiliary heat source contact closed"
       },
       "fault_0002_wrong_phase": {
         "name": "Wrong phase"

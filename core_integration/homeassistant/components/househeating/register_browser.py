@@ -10,14 +10,27 @@ from homeassistant.components import panel_custom, websocket_api
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import callback
+from homeassistant.helpers import entity_registry as er
 
-from househeating_modbus import CommunicationError
+from househeating_modbus import BINARY_FLAGS, CommunicationError
 from househeating_modbus.models import decode
-from househeating_modbus.registers import BY_ADDRESS, WRITABLE_ADDRESSES
+from househeating_modbus.operation import INPUT_FLAGS, RELAY_FLAGS
+from househeating_modbus.registers import BY_ADDRESS, FAULT_LABELS, WRITABLE_ADDRESSES
 from .const import DOMAIN, REGISTER_PANEL_PATH
 
 SCRIPT_URL = "/househeating_static/register_browser.js"
 CATALOG_KEY = f"{DOMAIN}_register_catalog"
+ENTITY_REGISTERS = {
+    **{register.key: (address, None) for address, register in BY_ADDRESS.items()},
+    **BINARY_FLAGS,
+    **RELAY_FLAGS,
+    **INPUT_FLAGS,
+    **{
+        f"fault_{address:04x}_{label}": (address, bit)
+        for address, bits in FAULT_LABELS.items()
+        for bit, label in bits.items()
+    },
+}
 
 
 def _load_catalog():
@@ -65,6 +78,24 @@ def _value(device, address, raw, timestamp, snapshot, *, on_demand=False):
     }
 
 
+def _register_entities(hass, entry_id):
+    registry = er.async_get(hass)
+    prefix = f"{entry_id}_"
+    result = {}
+    for item in er.async_entries_for_config_entry(registry, entry_id):
+        if item.platform != DOMAIN or not item.unique_id.startswith(prefix):
+            continue
+        location = ENTITY_REGISTERS.get(item.unique_id[len(prefix) :])
+        if location is None:
+            continue
+        address, bit = location
+        key = str(address) if bit is None else f"{address}:{bit}"
+        result.setdefault(key, []).append(
+            {"id": item.entity_id, "name": item.name or item.original_name, "enabled": not item.disabled}
+        )
+    return result
+
+
 @websocket_api.require_admin
 @websocket_api.websocket_command({vol.Required("type"): "househeating/register_browser/catalog"})
 @callback
@@ -97,6 +128,7 @@ def ws_snapshot(hass, connection, msg):
                 if address in snapshot.samples
             },
             has_errors=bool(snapshot.errors),
+            entities=_register_entities(hass, entry.entry_id),
         )
     connection.send_result(msg["id"], result)
 

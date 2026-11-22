@@ -34,6 +34,8 @@ async def test_register_browser_reads_only_documented_addresses(tmp_path, monkey
     from inspect import unwrap
 
     from homeassistant.components.frontend import DATA_PANELS
+    from homeassistant.helpers import device_registry as dr
+    from homeassistant.helpers import entity_registry as er
 
     from custom_components.househeating import register_browser as browser
 
@@ -41,6 +43,9 @@ async def test_register_browser_reads_only_documented_addresses(tmp_path, monkey
     entry = coordinator.entry
     hass = coordinator.hass
     hass.config_entries = ConfigEntries(hass, {})
+    dr.async_setup(hass)
+    await dr.async_load(hass)
+    await er.async_load(hass)
     entry._async_set_state(hass, ConfigEntryState.LOADED, None)
     entry.runtime_data = coordinator
     monkeypatch.setattr(hass.config_entries, "async_entries", lambda domain: [entry])
@@ -61,11 +66,26 @@ async def test_register_browser_reads_only_documented_addresses(tmp_path, monkey
     with pytest.raises(Unauthorized):
         browser.ws_read(hass, connection, {**message, "address": 0x0027})
     connection.user.is_admin = True
+    registry = er.async_get(hass)
+    relay = registry.async_get_or_create(
+        "binary_sensor",
+        "househeating",
+        f"{entry.entry_id}_zone_1_pump_active",
+        config_entry=entry,
+        suggested_object_id="renamed_zone_pump",
+        disabled_by=er.RegistryEntryDisabler.INTEGRATION,
+    )
     reads_before = list(unit.reads)
     browser.ws_catalog(hass, connection, message)
     assert any(row[:3] == [0x001C, 0x001C, 4] for row in connection.send_result.call_args.args[1]["rows"])
     browser.ws_snapshot(hass, connection, message)
     assert connection.send_result.call_args.args[1]["samples"][0x004F]["value"] == 28
+    assert connection.send_result.call_args.args[1]["entities"]["28:4"] == [
+        {"id": relay.entity_id, "name": None, "enabled": False}
+    ]
+    registry.async_update_entity(relay.entity_id, disabled_by=None)
+    browser.ws_snapshot(hass, connection, message)
+    assert connection.send_result.call_args.args[1]["entities"]["28:4"][0]["enabled"]
     assert unit.reads == reads_before
 
     read = unwrap(browser.ws_read)
@@ -111,6 +131,86 @@ async def harness(tmp_path, *, authorized=True):
     coordinator = HouseHeatingCoordinator(hass, entry, pump, 30)
     coordinator.data = pump.snapshot
     return coordinator, unit
+
+
+@pytest.mark.asyncio
+async def test_child_devices_move_existing_entities_without_changing_ids(tmp_path, monkeypatch):
+    from datetime import timedelta
+    from logging import getLogger
+
+    from homeassistant.helpers import device_registry as dr
+    from homeassistant.helpers import entity_registry as er
+    from homeassistant.helpers.entity_platform import EntityPlatform
+
+    from custom_components.househeating._vendor.househeating_modbus import BY_KEY
+    from custom_components.househeating.binary_sensor import async_setup_entry as setup_binary_sensors
+    from custom_components.househeating.sensor import HouseHeatingSensor
+
+    coordinator, unit = await harness(tmp_path, authorized=False)
+    hass, entry = coordinator.hass, coordinator.entry
+    hass.config_entries = ConfigEntries(hass, {})
+    monkeypatch.setattr(hass.config_entries, "async_get_entry", lambda _: entry)
+    entry.runtime_data = coordinator
+    dr.async_setup(hass)
+    await dr.async_load(hass)
+    await er.async_load(hass)
+
+    inlet = HouseHeatingSensor(coordinator, BY_KEY["water_inlet_temperature"])
+    flow = HouseHeatingSensor(coordinator, BY_KEY["flow_raw"])
+    frequency = HouseHeatingSensor(coordinator, BY_KEY["compressor_frequency"])
+    power = HouseHeatingSensor(coordinator, BY_KEY["input_power"])
+    devices, registry = dr.async_get(hass), er.async_get(hass)
+    parent = devices.async_get_or_create(config_entry_id=entry.entry_id, **inlet.device_info)
+    old_flow = registry.async_get_or_create(
+        "sensor",
+        "househeating",
+        flow.unique_id,
+        config_entry=entry,
+        device_id=parent.id,
+        suggested_object_id="my_original_flow",
+    )
+    platform = EntityPlatform(
+        hass=hass,
+        logger=getLogger(__name__),
+        domain="sensor",
+        platform_name="househeating",
+        platform=None,
+        scan_interval=timedelta(seconds=30),
+        entity_namespace=None,
+    )
+    platform.config_entry = entry
+    await platform.async_add_entities([flow, inlet, frequency, power])
+    assert flow.entity_id == old_flow.entity_id
+    assert registry.async_get(old_flow.entity_id).id == old_flow.id
+    assert devices.async_get(registry.async_get(old_flow.entity_id).device_id).parent_device_id == parent.id
+    assert inlet.device_entry.id == parent.id
+    assert [entity.device_info["translation_key"] for entity in (flow, frequency, power)] == [
+        "water_circuit",
+        "compressor",
+        "energy",
+    ]
+
+    heater = HouseHeatingWaterHeater(coordinator)
+    unit.data.update({0x130: 0, 0x304: 1, 0x1D: 1 << 10, 0x1C: 1 << 4})
+    await coordinator.device.async_update(force_optional=True)
+    assert "parent_device_id" not in heater.device_info
+    contacts = []
+    await setup_binary_sensors(hass, entry, contacts.extend)
+    for key in ("room_thermostat_contact_closed", "zone_1_pump_active"):
+        entity = next(entity for entity in contacts if entity.key == key)
+        assert entity.device_info["translation_key"] == "io"
+        assert entity.is_on is True and not entity.entity_registry_enabled_default
+
+    unit.data[0x130] = 1
+    await coordinator.device.async_update(force_optional=True)
+    child = devices.async_get_or_create_child(config_entry_id=entry.entry_id, **heater.device_info)
+    assert child.parent_device_id == parent.id
+    assert heater.device_info["translation_key"] == "domestic_hot_water"
+    unit.data[0x130] = 0
+    await coordinator.device.async_update(force_optional=True)
+    assert heater.device_info["translation_key"] == "domestic_hot_water"
+    assert not unit.writes
+    await platform.async_reset()
 
 
 def test_actual_imports_and_schemas():

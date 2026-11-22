@@ -85,11 +85,13 @@ from custom_components.househeating._vendor.househeating_modbus.operation import
 assert CurveConfig.from_options({}).enabled is False
 assert CurveConfig.from_options({}).automatic is False
 from custom_components.househeating.sensor import MONITORING_SENSORS,OPERATION_SENSORS
-from custom_components.househeating._vendor.househeating_modbus.operation import RELAY_FLAGS
+from custom_components.househeating._vendor.househeating_modbus.operation import INPUT_FLAGS, RELAY_FLAGS
+from custom_components.househeating.entity import SUBDEVICE_KEYS
 for name in ('strings.json','translations/nl.json','translations/en.json'):
     labels=json.loads((Path(sys.argv[1])/'custom_components/househeating'/name).read_text(encoding='utf-8'))
     assert set(MONITORING_SENSORS)|set(OPERATION_SENSORS) <= set(labels['entity']['sensor'])
-    assert set(RELAY_FLAGS) <= set(labels['entity']['binary_sensor'])
+    assert set(RELAY_FLAGS)|set(INPUT_FLAGS) <= set(labels['entity']['binary_sensor'])
+    assert set(SUBDEVICE_KEYS) <= set(labels['device'])
 import yaml
 from homeassistant.helpers.selector import validate_selector
 services=yaml.safe_load((Path(sys.argv[1])/'custom_components/househeating/services.yaml').read_text(encoding='utf-8'))
