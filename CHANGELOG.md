@@ -1,5 +1,10 @@
 # Wijzigingen
 
+## 0.11.0 — 22 november 2026
+
+- Registreert 567 aanvullende register- en bitsensoren standaard uitgeschakeld, bij het passende subapparaat.
+- De nieuwe sensoren zijn in en uit te schakelen vanuit de registerbrowser of de apparatenpagina. Ingeschakelde sensoren delen Modbus-uitlezingen per adres en hergebruiken de normale polling.
+
 ## 0.10.0 — 22 november 2026
 
 - Vernieuwt de registerbrowser met een compacte zoekweergave, uitklapbare bits en registerdetails, en afzonderlijke labels voor de warmtepompwaarde en de HA-entiteit.

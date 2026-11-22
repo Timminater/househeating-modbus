@@ -13,38 +13,29 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er
 
-from ._vendor.househeating_modbus import BINARY_FLAGS, CommunicationError
+from ._vendor.househeating_modbus import CommunicationError
 from ._vendor.househeating_modbus.models import decode
-from ._vendor.househeating_modbus.operation import INPUT_FLAGS, RELAY_FLAGS
-from ._vendor.househeating_modbus.registers import BY_ADDRESS, FAULT_LABELS, WRITABLE_ADDRESSES
+from ._vendor.househeating_modbus.registers import BY_ADDRESS, WRITABLE_ADDRESSES
+from .catalog import CATALOG_KEY, CATALOG_SCALES, ENTITY_REGISTERS, CatalogRow, catalog_registers
 from .const import DOMAIN, REGISTER_PANEL_PATH
 
 SCRIPT_PATH = Path(__file__).with_name("register_browser.js")
-CATALOG_KEY = f"{DOMAIN}_register_catalog"
-ENTITY_REGISTERS = {
-    **{register.key: (address, None) for address, register in BY_ADDRESS.items()},
-    **BINARY_FLAGS,
-    **RELAY_FLAGS,
-    **INPUT_FLAGS,
-    **{
-        f"fault_{address:04x}_{label}": (address, bit)
-        for address, bits in FAULT_LABELS.items()
-        for bit, label in bits.items()
-    },
-}
 
 
 def _load_assets():
-    catalog = json.loads(Path(__file__).with_name("register_catalog.json").read_text(encoding="utf-8"))
+    catalog = [
+        CatalogRow(*row)
+        for row in json.loads(Path(__file__).with_name("register_catalog.json").read_text(encoding="utf-8"))
+    ]
     revision = sha256(SCRIPT_PATH.read_bytes()).hexdigest()[:16]
-    return catalog, revision
+    return catalog, revision, catalog_registers(catalog)
 
 
 async def async_register_browser(hass):
-    catalog, revision = await hass.async_add_executor_job(_load_assets)
+    catalog, revision, registers = await hass.async_add_executor_job(_load_assets)
     script_url = f"/househeating_static/register_browser-{revision}.js"
     readable = frozenset(address for address, _, bit, *_, allowed in catalog if bit is None and allowed)
-    hass.data[CATALOG_KEY] = (catalog, readable)
+    hass.data[CATALOG_KEY] = (catalog, readable, registers)
     await hass.http.async_register_static_paths([StaticPathConfig(script_url, str(SCRIPT_PATH), False)])
     for command in (ws_catalog, ws_snapshot, ws_read):
         websocket_api.async_register_command(hass, command)
@@ -67,27 +58,33 @@ def _loaded_entry(hass, entry_id):
 def _value(device, address, raw, timestamp, snapshot, *, on_demand=False):
     register = BY_ADDRESS.get(address)
     decoded = None
+    unit = register.unit if register else None
     if register and register.kind not in ("raw", "bitfield"):
         values = {**snapshot.raw, address: raw} if on_demand else snapshot.raw
         decoded = decode(register, values, device.config)
+    elif address in CATALOG_SCALES:
+        unit, divisor = CATALOG_SCALES[address]
+        decoded = raw if divisor == 1 else raw / divisor
     return {
         "raw": raw,
         "value": decoded,
-        "unit": register.unit if register else None,
+        "unit": unit,
         "checked": bool(register and register.kind not in ("raw", "bitfield")),
         "at": timestamp,
         "source": "manual" if on_demand else "poll",
     }
 
 
-def _register_entities(hass, entry_id):
+def _register_entities(hass, entry_id, catalog):
     registry = er.async_get(hass)
     prefix = f"{entry_id}_"
     result = {}
     for item in er.async_entries_for_config_entry(registry, entry_id):
         if item.platform != DOMAIN or not item.unique_id.startswith(prefix):
             continue
-        location = ENTITY_REGISTERS.get(item.unique_id[len(prefix) :])
+        entity_key = item.unique_id[len(prefix) :]
+        extra = catalog.get(entity_key)
+        location = (extra.row.address, extra.row.bit) if extra else ENTITY_REGISTERS.get(entity_key)
         if location is None:
             continue
         address, bit = location
@@ -102,7 +99,7 @@ def _register_entities(hass, entry_id):
 @websocket_api.websocket_command({vol.Required("type"): "househeating/register_browser/catalog"})
 @callback
 def ws_catalog(hass, connection, msg):
-    catalog, _ = hass.data[CATALOG_KEY]
+    catalog, _, _ = hass.data[CATALOG_KEY]
     connection.send_result(msg["id"], {"rows": catalog, "writable": sorted(WRITABLE_ADDRESSES)})
 
 
@@ -130,7 +127,7 @@ def ws_snapshot(hass, connection, msg):
                 if address in snapshot.samples
             },
             has_errors=bool(snapshot.errors),
-            entities=_register_entities(hass, entry.entry_id),
+            entities=_register_entities(hass, entry.entry_id, hass.data[CATALOG_KEY][2]),
         )
     connection.send_result(msg["id"], result)
 
@@ -150,7 +147,7 @@ async def ws_read(hass, connection, msg):
         connection.send_error(msg["id"], "not_loaded", "HouseHeating entry is not loaded")
         return
     address = msg["address"]
-    _, readable = hass.data[CATALOG_KEY]
+    _, readable, _ = hass.data[CATALOG_KEY]
     if type(address) is not int or address not in readable:
         connection.send_error(
             msg["id"], "not_documented", "Address is not an individually documented readable register"

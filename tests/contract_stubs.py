@@ -66,10 +66,14 @@ class Coordinator(Generic):
     def async_add_listener(self, update_callback):
         return lambda: None
 
+    def async_contexts(self):
+        return iter(())
+
 
 class CoordinatorEntity(Generic):
-    def __init__(self, coordinator):
+    def __init__(self, coordinator, context=None):
         self.coordinator = coordinator
+        self.coordinator_context = context
 
     @property
     def available(self):

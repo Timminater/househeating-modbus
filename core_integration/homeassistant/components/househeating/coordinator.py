@@ -14,6 +14,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from househeating_modbus import HeatPump, HeatPumpError, Snapshot, WriteRejected
 from househeating_modbus.controls import SPACE_MODES
+from .catalog import CatalogRegister
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,10 +30,13 @@ class HouseHeatingCoordinator(DataUpdateCoordinator[Snapshot]):
         self.monitoring = None
         self.operation = None
         self.last_space_mode = None
+        self.catalog_registers: dict[str, CatalogRegister] = {}
 
     async def _async_update_data(self) -> Snapshot:
         try:
             kwargs = {"force_optional": self.force_optional}
+            if addresses := {context for context in self.async_contexts() if isinstance(context, int)}:
+                kwargs["catalog_addresses"] = addresses
             if self.monitoring is not None:
                 kwargs["telemetry_enabled"] = True
             if self.operation is not None and self.operation.statistics:

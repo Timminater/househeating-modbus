@@ -8,12 +8,17 @@ from homeassistant.helpers.entity import EntityCategory
 
 from ._vendor.househeating_modbus import REGISTERS, SELECTS
 from ._vendor.househeating_modbus.registers import WRITABLE_KEYS
-from .entity import HouseHeatingEntity
+from .entity import CatalogEntity, HouseHeatingEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = entry.runtime_data
     async_add_entities(HouseHeatingSensor(coordinator, r) for r in REGISTERS)
+    async_add_entities(
+        CatalogSensor(coordinator, register)
+        for register in coordinator.catalog_registers.values()
+        if not register.is_binary
+    )
     async_add_entities([ReportedOperationSensor(coordinator, "reported_operation")])
     if coordinator.monitoring is not None:
         async_add_entities(
@@ -24,6 +29,19 @@ async def async_setup_entry(hass, entry, async_add_entities):
         if coordinator.operation.config.enabled:
             keys.extend(list(OPERATION_SENSORS)[5:])
         async_add_entities(OperationSensor(coordinator, key, *OPERATION_SENSORS[key]) for key in keys)
+
+
+class CatalogSensor(CatalogEntity, SensorEntity):
+    def __init__(self, coordinator, register):
+        super().__init__(coordinator, register)
+        self._attr_native_unit_of_measurement = register.unit
+
+    @property
+    def native_value(self):
+        value = self.raw_value
+        if value is not None and self.register.divisor != 1:
+            return value / self.register.divisor
+        return value
 
 
 class HouseHeatingSensor(HouseHeatingEntity, SensorEntity):

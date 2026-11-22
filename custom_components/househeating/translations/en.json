@@ -187,6 +187,9 @@
     }
   },
   "device": {
+    "register_diagnostics": {
+      "name": "Diagnostics"
+    },
     "water_circuit": {
       "name": "Water circuit"
     },

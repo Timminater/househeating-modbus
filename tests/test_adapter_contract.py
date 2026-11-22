@@ -65,7 +65,7 @@ def harness(modules):
     )
     options = importlib.import_module("custom_components.househeating.const").DEFAULT_OPTIONS.copy()
     entry = Entry(data, options)
-    hass = SimpleNamespace(unit=FakeUnit(), shared_calls=[], temporary_calls=[], config_entries=Manager())
+    hass = SimpleNamespace(unit=FakeUnit(), shared_calls=[], temporary_calls=[], config_entries=Manager(), data={})
     return hass, entry
 
 

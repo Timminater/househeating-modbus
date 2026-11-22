@@ -82,7 +82,7 @@ async def test_register_browser_reads_only_documented_addresses(tmp_path, monkey
     )
     reads_before = list(unit.reads)
     browser.ws_catalog(hass, connection, message)
-    assert any(row[:3] == [0x001C, 0x001C, 4] for row in connection.send_result.call_args.args[1]["rows"])
+    assert any(row[:3] == (0x001C, 0x001C, 4) for row in connection.send_result.call_args.args[1]["rows"])
     browser.ws_snapshot(hass, connection, message)
     assert connection.send_result.call_args.args[1]["samples"][0x004F]["value"] == 28
     assert connection.send_result.call_args.args[1]["entities"]["28:4"] == [
@@ -139,6 +139,100 @@ async def harness(tmp_path, *, authorized=True):
     coordinator = HouseHeatingCoordinator(hass, entry, pump, 30)
     coordinator.data = pump.snapshot
     return coordinator, unit
+
+
+@pytest.mark.asyncio
+async def test_catalog_entities_disabled_by_default_and_poll_enabled_addresses(tmp_path, monkeypatch):
+    from datetime import timedelta
+    from logging import getLogger
+
+    from homeassistant.helpers import device_registry as dr
+    from homeassistant.helpers import entity_registry as er
+    from homeassistant.helpers.entity_platform import EntityPlatform
+
+    from custom_components.househeating import register_browser as browser
+    from custom_components.househeating.binary_sensor import async_setup_entry as setup_binary_sensors
+    from custom_components.househeating.entity import CatalogEntity
+    from custom_components.househeating.sensor import async_setup_entry as setup_sensors
+
+    coordinator, unit = await harness(tmp_path, authorized=False)
+    hass, entry = coordinator.hass, coordinator.entry
+    hass.config_entries = ConfigEntries(hass, {})
+    monkeypatch.setattr(hass.config_entries, "async_get_entry", lambda _: entry)
+    monkeypatch.setattr(hass.config_entries, "async_entries", lambda _: [entry])
+    entry.runtime_data = coordinator
+    entry._async_set_state(hass, ConfigEntryState.LOADED, None)
+    dr.async_setup(hass)
+    await dr.async_load(hass)
+    await er.async_load(hass)
+    monkeypatch.setattr(hass, "http", SimpleNamespace(async_register_static_paths=AsyncMock()), raising=False)
+    await browser.async_register_browser(hass)
+    coordinator.catalog_registers = hass.data[browser.CATALOG_KEY][2]
+    reads_before = list(unit.reads)
+    platforms = {}
+    for domain, setup in (("sensor", setup_sensors), ("binary_sensor", setup_binary_sensors)):
+        platform = platforms[domain] = EntityPlatform(
+            hass=hass,
+            logger=getLogger(__name__),
+            domain=domain,
+            platform_name="househeating",
+            platform=None,
+            scan_interval=timedelta(seconds=30),
+            entity_namespace=None,
+        )
+        platform.config_entry = entry
+        entities = []
+        await setup(hass, entry, entities.extend)
+        await platform.async_add_entities([entity for entity in entities if isinstance(entity, CatalogEntity)])
+
+    registry, devices = er.async_get(hass), dr.async_get(hass)
+    registered = er.async_entries_for_config_entry(registry, entry.entry_id)
+    assert len(registered) == len(coordinator.catalog_registers) == 567
+    assert all(item.disabled and not hass.states.get(item.entity_id) for item in registered)
+    assert unit.reads == reads_before
+    pump = next(item for item in registered if item.unique_id.endswith("_catalog_001c_bit_2"))
+    assert (
+        pump.device_id
+        == devices.async_get_child_device_by_identifier(("househeating", f"{entry.entry_id}_io"), entry.entry_id).id
+    )
+    frequency = next(item for item in registered if item.unique_id.endswith("_catalog_0027"))
+    assert (
+        frequency.device_id
+        == devices.async_get_child_device_by_identifier(
+            ("househeating", f"{entry.entry_id}_compressor"), entry.entry_id
+        ).id
+    )
+    connection = SimpleNamespace(user=SimpleNamespace(is_admin=True), send_result=Mock())
+    browser.ws_snapshot(hass, connection, {"id": 1, "entry_id": entry.entry_id})
+    assert connection.send_result.call_args.args[1]["entities"]["28:2"][0]["enabled"] is False
+
+    unit.data.update({0x1C: 4, 0x27: 38})
+    unit.reads.clear()
+    await coordinator.async_refresh()
+    assert (0x27, 1) not in unit.reads
+    for item in (pump, frequency):
+        registry.async_update_entity(item.entity_id, disabled_by=None)
+    from custom_components.househeating.binary_sensor import CatalogBinarySensor
+    from custom_components.househeating.sensor import CatalogSensor
+
+    await platforms["binary_sensor"].async_add_entities(
+        [CatalogBinarySensor(coordinator, coordinator.catalog_registers["catalog_001c_bit_2"])]
+    )
+    await platforms["sensor"].async_add_entities(
+        [CatalogSensor(coordinator, coordinator.catalog_registers["catalog_0027"])]
+    )
+    unit.reads.clear()
+    await coordinator.async_refresh()
+    assert hass.states.get(pump.entity_id).state == "on"
+    assert hass.states.get(frequency.entity_id).state == "38"
+    assert (0x19, 8) in unit.reads and (0x1C, 1) not in unit.reads
+    assert unit.reads.count((0x27, 1)) == 1
+    await platforms["sensor"].async_reset()
+    unit.reads.clear()
+    await coordinator.async_refresh()
+    assert (0x27, 1) not in unit.reads and 0x27 not in coordinator.device.snapshot.raw
+    assert not unit.writes
+    await platforms["binary_sensor"].async_reset()
 
 
 @pytest.mark.asyncio

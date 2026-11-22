@@ -517,7 +517,7 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
   }
 
   renderRow(rowData, key, open, bits, child) {
-    const [address, end, bit, , name] = rowData;
+    const [address, end, bit, , name, , , , readable] = rowData;
     const row = element("tr");
     if (child) row.className = "bit-child";
     const register = element("td");
@@ -555,7 +555,10 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
     const entityCell = element("td");
     this.mobileLabel(entityCell, "HA-entiteit");
     const entities = end === address ? this.entities(address, bit) : [];
-    if (!entities.length) this.sub(entityCell, this.snapshot?.entities ? "Geen HA-entiteit" : "HA-status onbekend");
+    if (!entities.length) {
+      const reason = end !== address ? "Adresbereik" : !readable ? "Geen ondersteunde uitlezing" : "Geen HA-entiteit";
+      this.sub(entityCell, this.snapshot?.entities ? reason : "HA-status onbekend");
+    }
     for (const entity of entities) {
       const summary = element("div");
       summary.className = "entity-summary";
@@ -584,7 +587,8 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
       const relay = /^Relaisuitgangsstatus/i.test(this.words.get(address)?.[4] ?? "");
       value = relay ? (active ? "Relais actief" : "Relais inactief") : (active ? "Actief" : "Inactief");
       this.sub(cell, active ? "Bitwaarde 1" : "Bitwaarde 0");
-    } else if (sample?.value != null) value = sample.value + (sample.unit ? " " + sample.unit : "");
+    } else if (sample && address >= 0x1000 && address <= 0x10FF) value = sample.raw ? "Actief" : "Inactief";
+    else if (sample?.value != null) value = sample.value + (sample.unit ? " " + sample.unit : "");
     else if (sample?.checked) value = "Ongeldige meetwaarde";
     else if (sample) value = hex(sample.raw);
     else if (/^W\b/.test(access)) value = "Alleen schrijven";
@@ -645,7 +649,14 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
     ha.className = "entity-details";
     ha.append(element("h2", "Home Assistant-entiteit"));
     const entities = end === address ? this.entities(address, bit) : [];
-    if (!entities.length) ha.append(element("p", this.snapshot?.entities ? "Geen gekoppelde entiteit." : "HA-status onbekend."));
+    if (!entities.length) {
+      const reason = end !== address ? "Dit is een adresbereik. Kies een afzonderlijk register." :
+        !readable ? "De browser ondersteunt voor deze rij geen uitlezing." : "Geen gekoppelde entiteit.";
+      ha.append(element("p", this.snapshot?.entities ? reason : "HA-status onbekend."));
+    }
+    if (entities.length && address >= 0x1000 && !(this.snapshot?.protocol >= 130)) {
+      this.sub(ha, "Voor uitlezen van deze spoel is protocolversie 130 of hoger vereist.");
+    }
     for (const entity of entities) ha.append(this.renderEntity(entity));
     sections.append(ha, register);
     cell.append(sections);

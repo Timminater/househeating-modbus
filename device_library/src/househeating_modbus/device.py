@@ -56,6 +56,9 @@ class HeatPump:
         self._slow_raw: dict[int, int] = {}
         self._slow_errors: dict[str, str] = {}
         self._slow_samples: dict[int, ReadWindow] = {}
+        self._catalog_values: dict[int, tuple[int, ReadWindow]] = {}
+        self._catalog_attempts: dict[int, float] = {}
+        self._catalog_errors: dict[int, str] = {}
         self.last_write: dict[str, str | int | float] | None = None
         # These requirements participate in the SHARED connection's arbitration.
         unit.set_message_spacing(self.config.spacing)
@@ -77,6 +80,9 @@ class HeatPump:
         self._slow_raw = {}
         self._slow_errors = {}
         self._slow_samples = {}
+        self._catalog_values.clear()
+        self._catalog_attempts.clear()
+        self._catalog_errors.clear()
 
     async def _read(self, address: int, count: int) -> dict[int, int]:
         result: dict[int, int] = {}
@@ -102,18 +108,61 @@ class HeatPump:
         if type(address) is not int or not 0 <= address <= 0xFFFF:
             raise ValueError("Invalid Modbus address")
         async with self._lock:
-            if not coil:
-                return (await self._read(address, 1))[address], time()
+            return await self._read_register(address, coil=coil), time()
+
+    async def _read_register(self, address: int, *, coil: bool) -> int:
+        if coil:
             try:
                 values = await self.unit.read_coils(address, 1)
             except Exception as err:
                 raise CommunicationError(f"Read coil 0x{address:04X}: {err}") from err
             if not isinstance(values, (list, tuple)) or len(values) != 1 or type(values[0]) is not bool:
                 raise CommunicationError(f"Invalid coil response for 0x{address:04X}")
-            return int(values[0]), time()
+            return int(values[0])
+        return (await self._read(address, 1))[address]
+
+    async def _update_catalog(self, addresses, raw, samples, errors, identity) -> None:
+        """Reuse regular reads and make at most one extra request per update."""
+        coils_supported = identity is not None and identity.protocol >= 130
+        wanted = {address for address in addresses if address not in raw and (address < 0x1000 or coils_supported)}
+        for cache in (self._catalog_values, self._catalog_attempts, self._catalog_errors):
+            for address in cache.keys() - wanted:
+                del cache[address]
+
+        now = monotonic()
+        due = (
+            address
+            for address in wanted
+            if address not in self._catalog_attempts
+            or (address < 0x100 and address not in self._catalog_errors)
+            or now - self._catalog_attempts[address] >= self.config.slow_interval
+        )
+        address = min(
+            due, key=lambda address: (self._catalog_attempts.get(address, float("-inf")), address), default=None
+        )
+        if address is not None:
+            start = time()
+            try:
+                value = await self._read_register(address, coil=address >= 0x1000)
+            except CommunicationError as err:
+                self._catalog_values.pop(address, None)
+                self._catalog_errors[address] = str(err)
+            else:
+                self._catalog_values[address] = (value, ReadWindow(start, time(), monotonic()))
+                self._catalog_errors.pop(address, None)
+            self._catalog_attempts[address] = monotonic()
+
+        for address, (value, sample) in self._catalog_values.items():
+            raw[address], samples[address] = value, sample
+        errors.update({f"catalog_{address:04x}": error for address, error in self._catalog_errors.items()})
 
     async def async_update(
-        self, *, force_optional: bool = False, telemetry_enabled: bool = False, diagnostics_enabled: bool = False
+        self,
+        *,
+        force_optional: bool = False,
+        telemetry_enabled: bool = False,
+        diagnostics_enabled: bool = False,
+        catalog_addresses: set[int] | frozenset[int] = frozenset(),
     ) -> Snapshot:
         """Read mandatory data atomically; optional failures never reuse old values."""
         async with self._lock:
@@ -203,6 +252,7 @@ class HeatPump:
                             raw.update(await read(address, 1))
                         except CommunicationError as err:
                             errors[f"diagnostics_{address:04x}"] = str(err)
+            await self._update_catalog(catalog_addresses, raw, samples, errors, identity)
             self.snapshot = Snapshot(raw, errors, time(), optional_timestamp, samples)
             return self.snapshot
 

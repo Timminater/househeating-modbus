@@ -6,10 +6,16 @@ from homeassistant.helpers.entity import EntityCategory
 from ._vendor.househeating_modbus import BINARY_FLAGS
 from ._vendor.househeating_modbus.operation import INPUT_FLAGS, RELAY_FLAGS, io_bit_value
 from ._vendor.househeating_modbus.registers import FAULT_LABELS
-from .entity import HouseHeatingEntity
+from .entity import CatalogEntity, HouseHeatingEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
+    coordinator = entry.runtime_data
+    async_add_entities(
+        CatalogBinarySensor(coordinator, register)
+        for register in coordinator.catalog_registers.values()
+        if register.is_binary
+    )
     async_add_entities(
         [
             *(HouseHeatingBinary(entry.runtime_data, key) for key in BINARY_FLAGS),
@@ -24,6 +30,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
         for address, bits in FAULT_LABELS.items()
         for bit, label in bits.items()
     )
+
+
+class CatalogBinarySensor(CatalogEntity, BinarySensorEntity):
+    @property
+    def is_on(self):
+        value = self.raw_value
+        return None if value is None else bool(value & (1 << (self.register.row.bit or 0)))
 
 
 class HouseHeatingBinary(HouseHeatingEntity, BinarySensorEntity):

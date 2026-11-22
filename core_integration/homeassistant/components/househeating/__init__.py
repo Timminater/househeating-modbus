@@ -11,6 +11,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from househeating_modbus import HeatPump
+from .catalog import CATALOG_KEY
 from .connection import connection_params, device_config
 from .const import DEFAULT_OPTIONS, DOMAIN
 from .coordinator import HouseHeatingConfigEntry, HouseHeatingCoordinator
@@ -64,6 +65,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: HouseHeatingConfigEntry)
     authorization = fingerprint if options["allow_control"] and len(fingerprint) == 4 else None
     device = HeatPump(unit, device_config(options), authorized_identity=authorization)
     coordinator = HouseHeatingCoordinator(hass, entry, device, int(options["scan_interval"]))
+    if catalog := hass.data.get(CATALOG_KEY):
+        coordinator.catalog_registers = catalog[2]
     entry.runtime_data = coordinator
     from househeating_modbus.telemetry import MonitoringConfig
 

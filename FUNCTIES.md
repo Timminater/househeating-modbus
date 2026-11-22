@@ -235,6 +235,14 @@ kan even nodig hebben om een ingeschakelde entiteit te laden.
 Gebruik **Met HA-entiteit** of **Uitgeschakeld** als snelkeuze.
 Onder **Filters** vind je ook de registergroep, uitleesstatus en Modbus-toegang.
 
+De aanvullende sensoren zijn standaard uitgeschakeld. Je kunt ze ook activeren
+via de lijst met uitgeschakelde entiteiten op het betreffende subapparaat.
+De sensoren lezen uitsluitend uit en gebruiken de ruwe waarde als de schaal
+onbekend is. De integratie hergebruikt normale uitlezingen en vraagt per
+normale cyclus hoogstens één aanvullend adres op. Configuratieparameters worden
+langzamer gelezen. Bij meerdere nieuwe adressen worden de waarden beurtelings
+opgehaald. Een register kan onbeschikbaar blijven als de firmware het niet ondersteunt.
+
 - **Ververs weergave** onder **Acties** haalt de huidige gegevens op bij Home Assistant.
 - **Register uitlezen** vraagt het getoonde adres rechtstreeks op bij de warmtepomp met de
   gedeelde Modbus-verbinding. **Lees deze pagina** leest maximaal 25 afzonderlijke

@@ -41,6 +41,37 @@ async def test_startup_is_read_only_and_pacing_delegated():
     assert all(0 < count <= 16 for _, count in unit.reads)
 
 
+@pytest.mark.asyncio
+async def test_catalog_poll_reuses_reads_and_isolates_failures_across_protocols():
+    unit = FakeUnit(memory(protocol=129))
+    device = HeatPump(unit)
+    unit.data[0x28] = 42
+    unit.fail_addresses.add(0x27)
+    coil_reads = []
+
+    async def read_coils(address, count):
+        coil_reads.append((address, count))
+        return [True]
+
+    unit.read_coils = read_coils
+    addresses = {0x1C, 0x27, 0x28, 0x1001}
+    result = await device.async_update(catalog_addresses=addresses)
+    assert result.layout_valid and "catalog_0027" in result.errors
+    assert (0x1C, 1) not in unit.reads and not coil_reads
+    assert unit.reads[-1] == (0x27, 1) and 0x28 not in result.raw
+
+    result = await device.async_update(catalog_addresses=addresses)
+    assert result.raw[0x28] == 42 and unit.reads[-1] == (0x28, 1)
+    assert unit.reads.count((0x27, 1)) == 1 and not coil_reads
+
+    unit.data[0x363] = 130
+    result = await device.async_update(catalog_addresses={0x1001})
+    assert result.raw[0x1001] == 1 and coil_reads == [(0x1001, 1)]
+    assert "catalog_0027" not in result.errors and 0x28 not in result.raw
+    result = await device.async_update()
+    assert 0x1001 not in result.raw and not unit.writes
+
+
 @pytest.mark.parametrize("measurement_divisor,setpoint_divisor", [(1, 1), (1, 10), (10, 1), (10, 10)])
 @pytest.mark.asyncio
 async def test_independent_scaling(measurement_divisor, setpoint_divisor):
