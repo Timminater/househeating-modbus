@@ -1,5 +1,9 @@
 # Wijzigingen
 
+## 0.10.0 — 22 november 2026
+
+- Vernieuwt de registerbrowser met een compacte zoekweergave, uitklapbare bits en registerdetails, en afzonderlijke labels voor de warmtepompwaarde en de HA-entiteit.
+
 ## 0.9.1 — 22 november 2026
 
 - Laadt de registerbrowser via een unieke URL per bestandsversie, zodat Home Assistant bijgewerkte browsercode ophaalt.

@@ -223,30 +223,31 @@ HouseHeating-regeling.
 
 Ga als beheerder naar **Instellingen → Apparaten en diensten → HouseHeating Modbus**.
 Open het tandwiel van je warmtepomp en klik op **Open de registerbrowser**.
-De kolom **Register en HA-entiteiten** toont geregistreerde entiteiten per adres of bit.
-Gebruik **Inschakelen** of **Uitschakelen** onder de naam van de entiteit. Dit
-wijzigt de entiteitsinstelling in Home Assistant. Home Assistant kan even nodig
-hebben om een ingeschakelde entiteit te laden. Filter met **HA-entiteit** op
-ingeschakelde of uitgeschakelde entiteiten, of op registers zonder entiteit.
-Zoek op `0x001C:4` voor de binaire sensor voor het relais van waterpomp zone 1.
-Zet **Extra registergroepen uitlezen** aan voor periodieke waarden van dit relais.
-De tabel volgt de bestaande
-Modbus-polls. Zoek op een naam, op `0x001C` voor een volledig woord, of op
-`0x001C:4` voor de relaisuitgang van de waterpomp van zone 1.
+Zoek op naam, adres, bit of entiteit-ID. Bij `0x001C` zie je het registerwoord
+en de bijbehorende bits. `0x001C:4` gaat direct naar de relaisuitgang van de
+waterpomp van zone 1. Zet **Extra registergroepen uitlezen** aan voor periodieke
+waarden van dit relais.
 
-- **Ververs weergave** haalt de huidige gegevens op bij Home Assistant.
-- **Lees** vraagt het getoonde adres rechtstreeks op bij de warmtepomp met de
+De kolom **Waarde** toont wat de warmtepomp meldt. **HA-entiteit** toont of de
+gekoppelde entiteit ingeschakeld is. Klik op de registernaam voor de technische
+details en **Entiteit inschakelen** of **Entiteit uitschakelen**. Home Assistant
+kan even nodig hebben om een ingeschakelde entiteit te laden.
+Gebruik **Met HA-entiteit** of **Uitgeschakeld** als snelkeuze.
+Onder **Filters** vind je ook de registergroep, uitleesstatus en Modbus-toegang.
+
+- **Ververs weergave** onder **Acties** haalt de huidige gegevens op bij Home Assistant.
+- **Register uitlezen** vraagt het getoonde adres rechtstreeks op bij de warmtepomp met de
   gedeelde Modbus-verbinding. **Lees deze pagina** leest maximaal 25 afzonderlijke
   adressen achtereen. **Lees alle resultaten** leest alle leesbare adressen die
   bij de huidige filters passen. Dat kan enkele minuten duren. Met
   **Stop na deze uitlezing** stopt de reeks na het lopende verzoek.
   Niet-ondersteunde adressen kunnen een leesfout opleveren.
 - De tabel toont alle vermeldingen uit §4.4.3, inclusief gedocumenteerde bits.
-  Onbeschreven adresreeksen zijn samengevat. De PDF-pagina in de tabel verwijst
+  Onbeschreven adresreeksen zijn samengevat. De PDF-pagina in de details verwijst
   naar de technische handleiding `R290 HouseHeating-1.pdf`.
-- De kolom **Modbus-toegang** volgt de handleiding. Uitlezen op aanvraag is
+- **Modbus-toegang** in de registerdetails volgt de handleiding. Uitlezen op aanvraag is
   beschikbaar voor individueel beschreven leesbare adressen. Voor spoelen is
   protocol 130 of hoger vereist. De browser kan uitsluitend lezen.
-- **Exporteer JSON** exporteert alle rijen van het huidige filter en hun laatst
+- **Exporteer JSON** onder **Acties** exporteert alle rijen van het huidige filter en hun laatst
   bekende waarden. Uitlezingen op aanvraag blijven beschikbaar zolang het paneel
   open is. Ze maken geen entiteiten aan en werken de normale polling niet bij.
