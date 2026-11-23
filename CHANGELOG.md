@@ -1,5 +1,10 @@
 # Wijzigingen
 
+## 0.12.1 — 23 november 2026
+
+- Vereenvoudigt de prijsinstellingen. Kies de uur- of kwartierprijs van Zonneplan en de integratie leest het tarief automatisch in.
+- Groepeert de overige instellingen en geeft bij elk veld aan wat je kunt invullen en hoe het de regeling beïnvloedt.
+
 ## 0.12.0 — 23 november 2026
 
 - Voegt **Dynamische prijssturing** toe met uur- en kwartiertarieven, advies en optionele automatische bediening.

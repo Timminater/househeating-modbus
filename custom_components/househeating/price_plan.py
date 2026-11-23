@@ -28,32 +28,21 @@ def _timestamp(value):
     return value.timestamp()
 
 
-def read_tariffs(attributes, config):
-    """Accept known formats and configurable nested fields."""
-    rows = attributes[config.get("forecast_attribute") or "forecast"]
+def read_tariffs(attributes):
+    """Read all-in Zonneplan hour or quarter-hour prices."""
+    rows = attributes["forecast"]
     if not 1 <= len(rows) <= 3000:
         raise ValueError("Invalid forecast size")
-
-    def field(row, path):
-        for part in path.split("."):
-            row = row[part]
-        return row
-
-    custom_price = config.get("price_field")
     parsed = []
     for row in rows:
-        start = _timestamp(field(row, config.get("start_field") or "start_date"))
-        end_field = config.get("end_field") or "end_date"
-        try:
-            end = _timestamp(field(row, end_field))
-        except KeyError:
-            if config.get("end_field"):
-                raise
-            end = start + 60 * config.get("interval_minutes", 60)
-        price_field = custom_price or (
-            "price_tax_included.amount" if "price_tax_included" in row else "electricity_price"
-        )
-        price = float(field(row, price_field)) / (config.get("price_scale", 1) if custom_price else 10_000_000)
+        start = _timestamp(row["start_date"])
+        if "price_tax_included" in row:
+            end = _timestamp(row["end_date"])
+            amount = row["price_tax_included"]["amount"]
+        else:
+            end = start + 3600
+            amount = row["electricity_price"]
+        price = float(amount) / 10_000_000
         if not isfinite(price) or not 0 < end - start <= 3600 or abs(price) > 1000:
             raise ValueError("Invalid tariff interval or price")
         parsed.append(Tariff(start, end, price))

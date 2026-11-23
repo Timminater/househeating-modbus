@@ -281,6 +281,11 @@ class HouseHeatingOptionsFlow(OptionsFlowWithReload):
 
         return await price_options(self, user_input)
 
+    async def async_step_price_settings(self, user_input=None):
+        from .price_options import price_settings
+
+        return await price_settings(self, user_input)
+
     async def async_step_price_confirm(self, user_input=None):
         from .price_options import price_confirm
 

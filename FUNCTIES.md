@@ -92,11 +92,11 @@ een warmtevraagbron, een kamerthermostaat voor comfortbewaking en bevestiging
 van de overdracht. Draag bestaande automatische aan-uitbediening van de
 warmtepomp over voordat je automatisch bedrijf inschakelt.
 
-- **Prijsbron.** Selecteer een tariefsensor met gepubliceerde uur- of
-  kwartierprijzen. Het formulier toont het huidige blok en omgerekende tarief
-  ter controle. Voor andere bronnen zijn de attribuutnaam, de velden in elk
-  interval en de deler instelbaar. Gebruik all-in afnametarieven en
-  tijdstempels met tijdzone. Gebruik punten voor geneste veldnamen.
+- **Prijsbron.** Kies de uur- of kwartierprijssensor van Zonneplan. De
+  integratie leest automatisch het all-in tarief en toont het huidige blok
+  ter controle. Geef in de eerste stap aan of je een buffervat hebt. De
+  volgende stap toont alleen de groepen die bij jouw installatie en
+  bedrijfswijze passen. Bij elk veld staat uitleg.
 - **Directe vloerverwarming.** Selecteer de warmtevraag van de aangesloten
   circuits en laat het gescheiden afgiftecircuit uit. Een optionele
   kamerthermostaat kan tijdens het goedkope blok tijdelijk een hoger

@@ -141,47 +141,100 @@
       },
       "price_control": {
         "title": "Dynamische prijssturing",
-        "description": "Kies warmtevraag en comfortbewaking voor automatische bediening. Zet andere automatiseringen voor dezelfde schakelaars uit vóór de overdracht. Neem de warmtevraag van alle aangesloten circuits mee.",
+        "description": "Kies je Zonneplan-prijs, de bedrijfswijze en of je een buffervat met een aparte afgiftepomp hebt.",
         "data": {
           "mode": "Bedrijfswijze",
-          "forecast_attribute": "Prognoseattribuut",
-          "start_field": "Veld voor begintijd",
-          "end_field": "Veld voor eindtijd (optioneel)",
-          "price_field": "Prijsveld (optioneel)",
-          "price_scale": "Deler voor aangepast prijsveld",
-          "interval_minutes": "Interval zonder eindtijd (minuten)",
-          "buffer": "Gescheiden afgiftecircuit met buffervat",
-          "buffer_min": "Minimale bruikbare watertemperatuur (°C)",
-          "preheat_offset": "Verhoging ruimtedoel (°C)",
-          "comfort_margin": "Toegestane daling ruimtetemperatuur (°C)",
+          "price_entity": "Zonneplan-stroomprijs",
           "max_hours": "Maximale prijspauze (uren)",
-          "pump_overrun": "Naloop afgiftepomp (minuten)",
-          "minimum_spread": "Minimaal prijsverschil per kWh",
-          "extra_energy": "Geschat extra stroomverbruik (%)",
-          "price_entity": "Bron van stroomtarieven",
-          "climate_entity": "Thermostaat voor voorverwarmen",
-          "comfort_entities": "Te bewaken kamerthermostaten",
-          "demand_entities": "Warmtevraagbronnen",
-          "buffer_entity": "Vat- of secundaire aanvoertemperatuur",
-          "floor_pump": "Bedrijfsstatus vloerpomp",
-          "pump_start": "Afgiftepomp schakelaar of startknop",
-          "pump_stop": "Afgiftepomp stopknop",
-          "pump_feedback": "Terugmelding afgiftepomp",
-          "power_entity": "Elektrisch warmtepompvermogen (W of kW)",
-          "confirm_control": "Draag aan-uitbediening over aan HouseHeating",
-          "hold_during_peak": "Temperatuur vasthouden na prijsuitstel (met buffervat)",
-          "allow_defer": "Ook verwarming naar na de piek verschuiven",
-          "water_boost": "Verhoging aanvoerdoel tijdens goedkope uren (°C)"
+          "buffer": "Gescheiden afgiftecircuit met buffervat"
         },
         "data_description": {
-          "hold_during_peak": "Bij de comfortgrens krijgt de kamerthermostaat tijdelijk een lager doel, afgerond volgens de thermostaatstap."
+          "mode": "Kies Alleen advies om eerst een prijsplan te bekijken. Automatisch kan de verwarming bedienen. Uit stopt de prijsregeling.",
+          "price_entity": "Kies de uur- of kwartierprijs van Zonneplan. Kies bij voorkeur kwartierprijzen als je contract per kwartier afrekent.",
+          "max_hours": "Hoelang mag de verwarming maximaal wachten tijdens een dure periode? Begin bijvoorbeeld met 1 uur. Bij afkoeling kan de pomp eerder hervatten.",
+          "buffer": "Zet aan als de warmtepomp een buffervat voedt en een aparte pomp de warmte naar de kamers brengt."
         }
       },
       "price_confirm": {
         "title": "Dynamische prijssturing",
-        "description": "Huidig interval {start} tot {end}. Omgerekend tarief {price} per kWh.",
+        "description": "Zonneplan toont voor {start} tot {end} een prijs van €{price} per kWh. Klopt dit met je tarief? Sla dan de instellingen op.",
         "data": {
           "confirm": "Sla deze instellingen op"
+        },
+        "data_description": {
+          "confirm": "Vink aan om het getoonde tarief te bevestigen en je keuzes te bewaren."
+        }
+      },
+      "price_settings": {
+        "title": "Dynamische prijssturing afstemmen",
+        "description": "De instellingen hieronder passen bij je keuzes. Open een groep voor uitleg en instellingen.",
+        "sections": {
+          "comfort": {
+            "name": "Comfort en voorverwarmen",
+            "data": {
+              "comfort_entities": "Te bewaken kamerthermostaten",
+              "climate_entity": "Thermostaat voor voorverwarmen",
+              "preheat_offset": "Verhoging ruimtedoel (°C)",
+              "comfort_margin": "Toegestane daling ruimtetemperatuur (°C)",
+              "water_boost": "Verhoging aanvoerdoel tijdens goedkope uren (°C)",
+              "allow_defer": "Ook verwarming naar na de piek verschuiven"
+            },
+            "data_description": {
+              "comfort_entities": "Kies de kamers die warm genoeg moeten blijven. Een kamer onder de ingestelde comfortgrens beëindigt het prijsuitstel.",
+              "climate_entity": "Kies de kamerthermostaat waarvan het doel tijdelijk mag veranderen. Laat leeg als je alleen op basis van warmtevraag en comfort wilt plannen.",
+              "preheat_offset": "Aantal graden dat het ruimtedoel in een goedkoop blok omhoog mag. Kies 0 om de ruimtetemperatuur niet extra te verhogen.",
+              "comfort_margin": "Hoeveel graden mag een bewaakte kamer onder haar normale doel zakken voordat de verwarming hervat?",
+              "water_boost": "Verhoog het aanvoerwater in een goedkoop blok met dit aantal graden. Kies 0 om het waterdoel zelf te blijven regelen.",
+              "allow_defer": "Sta toe dat de planner een goedkoper blok direct na de piek gebruikt, als de kamers lang genoeg warm blijven."
+            }
+          },
+          "heating": {
+            "name": "Automatische warmtepompbediening",
+            "data": {
+              "demand_entities": "Warmtevraagbronnen",
+              "confirm_control": "Draag aan-uitbediening over aan HouseHeating"
+            },
+            "data_description": {
+              "demand_entities": "Kies de thermostaten of signalen die aangeven dat er verwarming nodig is. Neem alle circuits mee die de warmtepomp verwarmt.",
+              "confirm_control": "Vink aan als HouseHeating de warmtepomp automatisch mag starten en stoppen. Zet andere aan-uitautomatiseringen voor dezelfde warmtepomp eerst uit."
+            }
+          },
+          "hydraulics": {
+            "name": "Buffervat en pompen",
+            "data": {
+              "buffer_entity": "Vat- of secundaire aanvoertemperatuur",
+              "buffer_min": "Minimale bruikbare watertemperatuur (°C)",
+              "hold_during_peak": "Temperatuur vasthouden na prijsuitstel (met buffervat)",
+              "floor_pump": "Bedrijfsstatus vloerpomp",
+              "pump_start": "Afgiftepomp schakelaar of startknop",
+              "pump_stop": "Afgiftepomp stopknop",
+              "pump_feedback": "Terugmelding afgiftepomp",
+              "pump_overrun": "Naloop afgiftepomp (minuten)"
+            },
+            "data_description": {
+              "buffer_entity": "Optioneel. Kies een sensor op het vat of op de leiding van vat naar woning. Laat leeg zonder geschikte sensor.",
+              "buffer_min": "Als de gekozen watersensor onder deze temperatuur komt, eindigt het prijsuitstel. Geldt alleen met een watersensor.",
+              "hold_during_peak": "Optioneel met buffervat. Als de kamer haar comfortgrens bereikt, kan de thermostaat tijdens de piek op een tijdelijk lager doel bijverwarmen.",
+              "floor_pump": "Optioneel. Kies het signaal dat aangeeft dat de vloerpomp draait. Dan blijft de gedeelde afgiftepomp ook draaien.",
+              "pump_start": "Optioneel. Kies de schakelaar of startknop van de pomp achter het vat. Laat leeg als een andere regeling deze pomp bedient.",
+              "pump_stop": "Alleen bij knopbediening. Kies de aparte knop waarmee de pomp stopt.",
+              "pump_feedback": "Bij knopbediening verplicht. Kies een schakelstatus of toerentalsensor om te weten of de pomp draait.",
+              "pump_overrun": "Hoeveel minuten blijft de afgiftepomp nog draaien nadat alle warmtevraag is weggevallen?"
+            }
+          },
+          "economics": {
+            "name": "Besparing berekenen",
+            "data": {
+              "minimum_spread": "Minimaal prijsverschil per kWh",
+              "extra_energy": "Geschat extra stroomverbruik (%)",
+              "power_entity": "Elektrisch warmtepompvermogen (W of kW)"
+            },
+            "data_description": {
+              "minimum_spread": "Minimaal verschil tussen goedkope en dure stroom, in euro per kWh. 0,05 betekent 5 cent per kWh.",
+              "extra_energy": "Schat hoeveel extra stroom vooraf opwarmen kost. De planner trekt die kosten af bij het beoordelen van het voordeel.",
+              "power_entity": "Optioneel. Kies de sensor die het elektrische vermogen van de warmtepomp meet in W of kW. Daarmee schat de planner de besparing in euro’s."
+            }
+          }
         }
       }
     },
@@ -197,7 +250,7 @@
       "automatic_needs_native_curve": "Automatische bediening vereist uitleesbare ingebouwde curves: schakel curves in bij de bedieningsopties en gebruik protocolversie 130 of nieuwer.",
       "price_control_requirements": "Automatische bediening vereist vrijgegeven bediening, warmtevraag, een kamerthermostaat en expliciete overdracht.",
       "price_pump_configuration": "Kies een schakelaar of aparte start- en stopknoppen met onafhankelijke terugmelding.",
-      "invalid_price_forecast": "De sensor moet geldige tarieven publiceren die de huidige tijd omvatten.",
+      "invalid_price_forecast": "Kies een beschikbare uur- of kwartierprijssensor van Zonneplan met een geldig tarief voor dit moment.",
       "price_hold_requirements": "Kies een buffervat, een kamerthermostaat en een comfortmarge groter dan 0,1 °C.",
       "price_water_requirements": "Schakel curve-uitlezing in en gebruik één automatische schrijver voor het waterdoel."
     }

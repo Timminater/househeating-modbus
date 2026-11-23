@@ -141,47 +141,100 @@
       },
       "price_control": {
         "title": "Dynamic price control",
-        "description": "Configure heat demand and comfort monitoring for automatic operation. Disable other automations that control the same switches before handing over. Use heating demand from every connected circuit.",
+        "description": "Choose your Zonneplan tariff, operating mode and whether you have a buffer tank with a separate circulation pump.",
         "data": {
           "mode": "Operating mode",
-          "forecast_attribute": "Forecast attribute",
-          "start_field": "Start time field",
-          "end_field": "End time field (optional)",
-          "price_field": "Price field (optional)",
-          "price_scale": "Custom price divisor",
-          "interval_minutes": "Interval without end time (minutes)",
-          "buffer": "Separate circuit with buffer tank",
-          "buffer_min": "Minimum usable water temperature (°C)",
-          "preheat_offset": "Room preheat increase (°C)",
-          "comfort_margin": "Allowed room temperature drop (°C)",
+          "price_entity": "Zonneplan electricity tariff",
           "max_hours": "Maximum price pause (hours)",
-          "pump_overrun": "Secondary pump overrun (minutes)",
-          "minimum_spread": "Minimum tariff difference per kWh",
-          "extra_energy": "Estimated extra energy (%)",
-          "price_entity": "Electricity tariff source",
-          "climate_entity": "Thermostat for preheating",
-          "comfort_entities": "Rooms to monitor for comfort",
-          "demand_entities": "Heat demand sources",
-          "buffer_entity": "Buffer or secondary supply temperature",
-          "floor_pump": "Floor pump running state",
-          "pump_start": "Secondary pump switch or start button",
-          "pump_stop": "Secondary pump stop button",
-          "pump_feedback": "Secondary pump feedback",
-          "power_entity": "Heat pump electric power (W or kW)",
-          "confirm_control": "Hand over heat pump on/off control to HouseHeating",
-          "hold_during_peak": "Hold room temperature after a price pause (with buffer tank)",
-          "allow_defer": "Also allow heating to shift after the price peak",
-          "water_boost": "Increase supply target in cheap periods (°C)"
+          "buffer": "Separate circuit with buffer tank"
         },
         "data_description": {
-          "hold_during_peak": "At the comfort limit, the room thermostat temporarily receives a lower target, rounded to a supported step."
+          "mode": "Choose Advice only to preview a schedule. Automatic can control heating. Off stops price control.",
+          "price_entity": "Select the Zonneplan hourly or quarter-hourly tariff. Prefer quarter-hourly prices if your contract bills per quarter hour.",
+          "max_hours": "How long may heating wait during an expensive period? Start with 1 hour. Heating can resume earlier if rooms cool down.",
+          "buffer": "Enable if the heat pump charges a buffer tank and a separate pump delivers heat to rooms."
         }
       },
       "price_confirm": {
         "title": "Dynamic price control",
-        "description": "Current interval {start} to {end}. Converted price {price} per kWh.",
+        "description": "Zonneplan shows €{price} per kWh from {start} to {end}. If this matches your tariff, save the settings.",
         "data": {
           "confirm": "Save these settings"
+        },
+        "data_description": {
+          "confirm": "Check to confirm this tariff and save your choices."
+        }
+      },
+      "price_settings": {
+        "title": "Adjust dynamic price control",
+        "description": "These settings depend on your earlier choices. Expand a group for its settings and help.",
+        "sections": {
+          "comfort": {
+            "name": "Comfort and preheating",
+            "data": {
+              "comfort_entities": "Rooms to monitor for comfort",
+              "climate_entity": "Thermostat for preheating",
+              "preheat_offset": "Room preheat increase (°C)",
+              "comfort_margin": "Allowed room temperature drop (°C)",
+              "water_boost": "Increase supply target in cheap periods (°C)",
+              "allow_defer": "Also allow heating to shift after the price peak"
+            },
+            "data_description": {
+              "comfort_entities": "Select rooms that must stay comfortable. A room below its comfort limit ends the price pause.",
+              "climate_entity": "Select the thermostat whose target may change temporarily. Leave empty to plan around heat demand and comfort only.",
+              "preheat_offset": "How many degrees to add to the room target in a cheap period. Use 0 to skip preheating the room.",
+              "comfort_margin": "How far may a monitored room drop below its normal target before heating resumes?",
+              "water_boost": "Increase the water target by this many degrees in a cheap period. Use 0 to leave the water target to its existing controller.",
+              "allow_defer": "Allow using a cheaper period immediately after the peak when the rooms can stay comfortable long enough."
+            }
+          },
+          "heating": {
+            "name": "Automatic heat pump control",
+            "data": {
+              "demand_entities": "Heat demand sources",
+              "confirm_control": "Hand over heat pump on/off control to HouseHeating"
+            },
+            "data_description": {
+              "demand_entities": "Select thermostats or signals that indicate a call for heat. Include all circuits the heat pump serves.",
+              "confirm_control": "Confirm that HouseHeating may automatically start and stop heating. Disable competing automations for the same heat pump first."
+            }
+          },
+          "hydraulics": {
+            "name": "Buffer tank and pumps",
+            "data": {
+              "buffer_entity": "Buffer or secondary supply temperature",
+              "buffer_min": "Minimum usable water temperature (°C)",
+              "hold_during_peak": "Hold room temperature after a price pause (with buffer tank)",
+              "floor_pump": "Floor pump running state",
+              "pump_start": "Secondary pump switch or start button",
+              "pump_stop": "Secondary pump stop button",
+              "pump_feedback": "Secondary pump feedback",
+              "pump_overrun": "Secondary pump overrun (minutes)"
+            },
+            "data_description": {
+              "buffer_entity": "Optional. Select the tank temperature or the temperature of water leaving the tank for the rooms.",
+              "buffer_min": "The price pause ends when the selected water sensor drops below this value. Applies only with a water sensor.",
+              "hold_during_peak": "Optional with a buffer tank. At the comfort limit, the thermostat can maintain a temporarily lower target during the peak.",
+              "floor_pump": "Optional. Select the running state of the floor pump so the shared circulation pump keeps running with it.",
+              "pump_start": "Optional. Select the switch or start button of the pump after the tank. Leave empty if another controller runs it.",
+              "pump_stop": "For button control only. Select the separate stop button.",
+              "pump_feedback": "Required for button control. Select a running-state or speed sensor to confirm whether the pump is running.",
+              "pump_overrun": "How many minutes should the circulation pump continue after all heat demand ends?"
+            }
+          },
+          "economics": {
+            "name": "Savings calculation",
+            "data": {
+              "minimum_spread": "Minimum tariff difference per kWh",
+              "extra_energy": "Estimated extra energy (%)",
+              "power_entity": "Heat pump electric power (W or kW)"
+            },
+            "data_description": {
+              "minimum_spread": "Minimum difference between the cheap and expensive periods, in euros per kWh. 0.05 means 5 cents per kWh.",
+              "extra_energy": "Estimate extra electricity for preheating. The planner deducts this cost when deciding whether shifting is worthwhile.",
+              "power_entity": "Optional. Select the heat pump electrical power sensor in W or kW to estimate savings in euros."
+            }
+          }
         }
       }
     },
@@ -197,7 +250,7 @@
       "automatic_needs_native_curve": "Automatic control needs readable native curves: enable curves in the control options and use protocol version 130 or later.",
       "price_control_requirements": "Automatic operation needs commissioned control, heat demand, a room thermostat and explicit handover.",
       "price_pump_configuration": "Select a switch or separate start and stop buttons with independent feedback.",
-      "invalid_price_forecast": "The sensor must publish valid tariffs covering the current time.",
+      "invalid_price_forecast": "Select an available Zonneplan hourly or quarter-hourly tariff sensor with a valid current price.",
       "price_hold_requirements": "Select a buffer tank, a room thermostat and a comfort margin above 0.1 °C.",
       "price_water_requirements": "Enable curve readout and use one automatic controller for the water target."
     }

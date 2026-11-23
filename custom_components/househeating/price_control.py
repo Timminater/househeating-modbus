@@ -8,9 +8,11 @@ from math import floor, isfinite
 from time import time
 
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.storage import Store
 
+from .price_options import is_zonneplan_tariff
 from .price_plan import PricePlan, Tariff, choose_plan, read_tariffs
 
 _LOGGER = logging.getLogger(__name__)
@@ -145,7 +147,7 @@ class PriceManager:
         return active
 
     def temperature_delta(self, celsius):
-        return celsius * 1.8 if self.hass.config.units.temperature_unit == "°F" else celsius
+        return celsius * 1.8 if self.hass.config.units.temperature_unit == "Â°F" else celsius
 
     def buffer_ready(self):
         entity = self.config.get("buffer_entity")
@@ -156,9 +158,9 @@ class PriceManager:
             return False
         value = number(state.state)
         unit = state.attributes.get("unit_of_measurement")
-        if value is None or unit not in ("°C", "°F", "K"):
+        if value is None or unit not in ("Â°C", "Â°F", "K"):
             return False
-        if unit == "°F":
+        if unit == "Â°F":
             value = (value - 32) * 5 / 9
         elif unit == "K":
             value -= 273.15
@@ -185,11 +187,12 @@ class PriceManager:
         return {hour: sum(values) / len(values) for hour, values in groups.items() if len(values) >= 4}
 
     def forecast(self, now):
-        state = self.state(self.config["price_entity"])
-        if state is None:
+        entity_id = self.config.get("price_entity")
+        state = self.state(entity_id)
+        if state is None or not is_zonneplan_tariff(er.async_get(self.hass).async_get(entity_id)):
             return ()
         try:
-            rows = read_tariffs(state.attributes, self.config)
+            rows = read_tariffs(state.attributes)
         except (ArithmeticError, KeyError, TypeError, ValueError):
             return ()
         return rows if any(row.start <= now < row.end for row in rows) else ()

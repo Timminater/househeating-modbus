@@ -4,6 +4,8 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import probatio as vol
+from homeassistant.data_entry_flow import section
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig, SelectSelector, SelectSelectorConfig
 from homeassistant.util import dt as dt_util
 
@@ -11,12 +13,6 @@ from .price_plan import read_tariffs
 
 DEFAULTS = {
     "mode": "off",
-    "forecast_attribute": "forecast",
-    "start_field": "start_date",
-    "end_field": "",
-    "price_field": "",
-    "price_scale": 1.0,
-    "interval_minutes": 60,
     "buffer": False,
     "hold_during_peak": False,
     "allow_defer": False,
@@ -41,10 +37,38 @@ ENTITIES = {
     "pump_feedback": ["switch", "sensor", "binary_sensor"],
     "power_entity": ["sensor"],
 }
+GROUPS = {
+    "comfort": ("comfort_entities", "climate_entity", "preheat_offset", "comfort_margin", "water_boost", "allow_defer"),
+    "heating": ("demand_entities", "confirm_control"),
+    "hydraulics": (
+        "buffer_entity",
+        "buffer_min",
+        "hold_during_peak",
+        "floor_pump",
+        "pump_start",
+        "pump_stop",
+        "pump_feedback",
+        "pump_overrun",
+    ),
+    "economics": ("minimum_spread", "extra_energy", "power_entity"),
+}
+TARIFF_SUFFIXES = ("_current_electricity_tariff", "_current_quarter_hourly_electricity_tariff")
+
+
+def is_zonneplan_tariff(entry):
+    return (
+        entry is not None
+        and entry.domain == "sensor"
+        and entry.platform == "zonneplan_one"
+        and entry.unique_id.endswith(TARIFF_SUFFIXES)
+    )
+
+
+BASIC = ("mode", "price_entity", "max_hours", "buffer")
+PUMP_FIELDS = {"floor_pump", "pump_start", "pump_stop", "pump_feedback", "pump_overrun"}
+
 MULTIPLE = ("comfort_entities", "demand_entities")
 LIMITS = {
-    "price_scale": (0.000001, 1e12),
-    "interval_minutes": (1, 60),
     "buffer_min": (0, 75),
     "preheat_offset": (0, 3),
     "comfort_margin": (0, 3),
@@ -57,15 +81,72 @@ LIMITS = {
 
 async def price_options(flow, user_input):
     options = dict(flow.config_entry.options)
-    saved = options.get("price_control", {})
-    defaults = DEFAULTS | saved
-    errors = {}
+    defaults = DEFAULTS | options.get("price_control", {})
     if user_input is not None:
-        config = DEFAULTS | dict(user_input)
-        defaults.update(config)
+        config = defaults | user_input
+        if not user_input.get("price_entity"):
+            config.pop("price_entity", None)
         if config["mode"] == "off":
             options["price_control"] = config
             return flow.async_create_entry(title="", data=options)
+        try:
+            preview = price_preview(flow, config)
+        except (ArithmeticError, KeyError, TypeError, ValueError, StopIteration):
+            errors = {"price_entity": "invalid_price_forecast"}
+            defaults = config
+        else:
+            flow._price_basics = config
+            flow._price_preview = preview
+            return await price_settings(flow, None)
+    else:
+        errors = {}
+    fields = schema_fields(flow, defaults)
+    return flow.async_show_form(
+        step_id="price_control", data_schema=vol.Schema(dict(fields[key] for key in BASIC)), errors=errors
+    )
+
+
+def price_preview(flow, config):
+    source = flow.hass.states.get(config.get("price_entity", ""))
+    if (
+        source is None
+        or source.state in ("unknown", "unavailable")
+        or not is_zonneplan_tariff(er.async_get(flow.hass).async_get(source.entity_id))
+    ):
+        raise ValueError("No price source")
+    now = dt_util.utcnow().timestamp()
+    row = next(value for value in read_tariffs(source.attributes) if value.start <= now < value.end)
+    return {
+        "start": dt_util.as_local(datetime.fromtimestamp(row.start, UTC)).strftime("%d-%m-%Y %H:%M"),
+        "end": dt_util.as_local(datetime.fromtimestamp(row.end, UTC)).strftime("%d-%m-%Y %H:%M"),
+        "price": f"{row.price:.5f}",
+    }
+
+
+async def price_settings(flow, user_input):
+    if not (defaults := getattr(flow, "_price_basics", None)):
+        return await price_options(flow, None)
+    options = flow.config_entry.options
+    automatic = defaults["mode"] == "automatic"
+    groups = {
+        group: tuple(key for key in keys if automatic or key not in PUMP_FIELDS)
+        for group, keys in GROUPS.items()
+        if (group != "heating" or automatic) and (group != "hydraulics" or defaults["buffer"])
+    }
+    errors = {}
+    if user_input is not None:
+        config = dict(defaults)
+        for group, keys in groups.items():
+            submitted = user_input.get(group, {})
+            for key in keys:
+                if key in submitted:
+                    config[key] = submitted[key]
+                elif key in ENTITIES:
+                    config.pop(key, None)
+        if not config["buffer"]:
+            config["hold_during_peak"] = False
+        config = {key: value for key, value in config.items() if key in DEFAULTS or key in ENTITIES}
+        defaults = config
         if config["hold_during_peak"] and (
             not config["buffer"] or not config.get("climate_entity") or config["comfort_margin"] <= 0.1
         ):
@@ -109,22 +190,22 @@ async def price_options(flow, user_input):
                 errors["base"] = "price_pump_configuration"
         if not errors:
             try:
-                source = flow.hass.states.get(config.get("price_entity", ""))
-                if source is None or source.state in ("unknown", "unavailable"):
-                    raise ValueError("No price source")
-                rows = read_tariffs(source.attributes, config)
-                now = dt_util.utcnow().timestamp()
-                row = next(value for value in rows if value.start <= now < value.end)
+                flow._price_preview = price_preview(flow, config)
             except (ArithmeticError, KeyError, TypeError, ValueError, StopIteration):
-                errors["price_entity"] = "invalid_price_forecast"
-            else:
-                flow._price_candidate = config
-                flow._price_preview = {
-                    "start": dt_util.as_local(datetime.fromtimestamp(row.start, UTC)).isoformat(),
-                    "end": dt_util.as_local(datetime.fromtimestamp(row.end, UTC)).isoformat(),
-                    "price": f"{row.price:.5f}",
-                }
-                return await price_confirm(flow, None)
+                return await price_options(flow, {key: config[key] for key in BASIC if key in config})
+            flow._price_candidate = config
+            return await price_confirm(flow, None)
+    fields = schema_fields(flow, defaults)
+    form = {}
+    for group, keys in groups.items():
+        form[vol.Optional(group, default=dict)] = section(
+            vol.Schema(dict(fields[key] for key in keys)),
+            {"collapsed": group != "heating" and not any(key in errors for key in keys) and "base" not in errors},
+        )
+    return flow.async_show_form(step_id="price_settings", data_schema=vol.Schema(form), errors=errors)
+
+
+def schema_fields(flow, defaults):
     schema = {}
     for key, value in DEFAULTS.items():
         marker = vol.Required(key, default=defaults.get(key, value))
@@ -141,6 +222,24 @@ async def price_options(flow, user_input):
             schema[marker] = type(value)
     for key, domains in ENTITIES.items():
         marker = vol.Optional(key, default=defaults[key]) if defaults.get(key) else vol.Optional(key)
+        if key == "price_entity":
+            registry = er.async_get(flow.hass)
+            candidates = [
+                entry.entity_id
+                for entry in registry.entities.values()
+                if is_zonneplan_tariff(entry) and entry.disabled_by is None
+            ]
+            schema[marker] = EntitySelector(
+                EntitySelectorConfig(
+                    filter={"domain": "sensor", "integration": "zonneplan_one"},
+                    include_entities=candidates
+                    or [
+                        "sensor.zonneplan_current_electricity_tariff",
+                        "sensor.zonneplan_current_quarter_hourly_electricity_tariff",
+                    ],
+                )
+            )
+            continue
         schema[marker] = EntitySelector(
             EntitySelectorConfig(
                 filter={"domain": domains},
@@ -148,7 +247,7 @@ async def price_options(flow, user_input):
             )
         )
     schema[vol.Required("confirm_control", default=False)] = bool
-    return flow.async_show_form(step_id="price_control", data_schema=vol.Schema(schema), errors=errors)
+    return {marker.schema: (marker, validator) for marker, validator in schema.items()}
 
 
 async def price_confirm(flow, user_input):
