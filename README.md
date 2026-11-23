@@ -5,52 +5,29 @@
 # HouseHeating Modbus
 
 Integratie voor de **HouseHeating HH-C3-12** via de gedeelde Modbus-verbinding
-van Home Assistant. Monitoring, verwarming/koeling, warmwater en normale setpoints.
+van Home Assistant. De integratie ondersteunt verwarming, koeling, warmwater,
+energiemonitoring en optionele sturing op buitentemperatuur, zonnestroom en dynamische tarieven.
 
-**Versie 0.6.0 · Home Assistant 2026.10.1 of nieuwer · experimenteel**
+**Home Assistant 2026.10.1 of nieuwer · experimenteel** · [Nieuwste release](https://github.com/Timminater/househeating-modbus/releases/latest)
 
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Timminater&repository=househeating-modbus&category=integration)
 
-446 softwaretests geslaagd met echte Home Assistant-klassen en gesimuleerde
-Modbus-antwoorden. Werking op een fysieke warmtepomp is nog niet bevestigd.
+## Releaseoverzicht
 
-## Nieuw in 0.6.0
+- **v0.12.1** · Eenvoudiger prijsformulier met Zonneplan-keuze, contextafhankelijke velden en uitleg per instelling.
+- **v0.12.0** · Dynamische prijssturing met advies, voorverwarmen en uitstel tijdens dure uren.
+- **v0.11.0** · Optionele register- en bitsensoren met gedeelde Modbus-uitlezing.
+- **v0.10.0** · Compacte registerbrowser met zoekfunctie, uitklapbare bits en registerdetails.
+- **v0.9.1** · De registerbrowser laadt de juiste frontendversie en toont knoppen voor gekoppelde entiteiten.
+- **v0.9.0** · Entiteiten gegroepeerd per subapparaat, met extra relais- en ingangssignalen.
+- **v0.7.1** · Registerbrowser geopend vanuit de instellingen van de integratie.
+- **v0.7.0** · Eerste alleen-lezen registerbrowser met zoeken en JSON-export.
+- **v0.6.0** · Aparte vloerverwarmingsschakelaar en robuustere bediening, monitoring en stooklijn.
+- **v0.5.0** · Uitgebreidere storingsdiagnose, bedrijfsstatus en behoud van de ruimtemodus.
+- **v0.4.0** · Energiemonitoring, compressortellers, eigen stooklijn en dashboard.
+- **v0.2.0** · Thermostaat en boiler met terugleescontrole voor wijzigingsopdrachten.
 
-- **Let op, gewijzigd:** de thermostaatpresets zijn alleen nog het profiel
-  (standaard, krachtig, stil). Vloerverwarming is een aparte schakelaar
-  **Vloerverwarming**. Pas automatiseringen met preset `floor_heating` aan.
-- Staat de hele warmtepomp uit, dan start de thermostaat alleen ruimteverwarming
-  of koeling en de boiler alleen warmwater. Een onthouden andere functie gaat niet
-  meer ongemerkt mee aan.
-- Energiemonitoring blijft werken bij een langer uitleesinterval: de maximale
-  meetouderdom is altijd minstens twee uitleesintervallen.
-- De automatische stooklijn leest en schrijft alleen nog als er echt iets moet
-  veranderen. Een storing vóór verzending stopt haar niet meer blijvend.
-- Minder schijfslijtage en een kleinere database: totalen worden elke vijf minuten
-  opgeslagen, attributen veranderen niet meer elke seconde.
-- Thermostaat toont de gerapporteerde actie (verwarmen, koelen, inactief) en
-  accepteert een HVAC-modus bij het instellen van de temperatuur.
-- De boiler werkt ook met extra registers uitgeschakeld. Onleesbare opgeslagen
-  totalen geven een reparatiemelding in plaats van de hele integratie te blokkeren.
-
-## Eerder toegevoegd in 0.5.0
-
-- Sensorfouten onderdrukken ook spoel-, zuig-, uitlaat- en economizermetingen.
-- Benoemde compressor-/aandrijvingsstoringen en een gerapporteerde bedrijfsstatus.
-- Alleen-lezen regelparameters en ruwe zonesetpoints; kleinere optionele leesblokken bij ongeldige adressen.
-- Aanzetten behoudt de ruimtemodus tijdens dezelfde integratiesessie.
-
-## Eerder toegevoegd in 0.4.0
-
-- Elektrische en geschatte thermische energie, COP/EER en meetdekking; externe elektriciteits- en thermische vermogensbronnen.
-- Waargenomen compressorstarts, draaiuren en cyclusduur; extra relais-/storingsentiteiten.
-- Rendement over dag, maand, gisteren, 7, 30 en 365 kalenderdagen en de totale meetperiode.
-- Optionele eigen stooklijn met PV-/accucorrectie, adviesmodus en afzonderlijk bevestigde automatische bediening.
-- Dashboard samenstellen met actuele entiteitsnamen en standaardkaarten.
-
-Nieuwe optionele functies staan standaard uit. Bestaande entiteitsidentiteiten,
-configuratie, gedeelde verbinding en schrijfbeveiligingen blijven behouden.
-Zie [FUNCTIES.md](FUNCTIES.md) en [ENERGIEMONITORING.md](ENERGIEMONITORING.md).
+Zie [CHANGELOG.md](CHANGELOG.md) voor de volledige wijzigingsgeschiedenis.
 
 ## Installeren met HACS (aanbevolen)
 
@@ -72,7 +49,7 @@ Voeg deze afzonderlijke repository toe, niet `Timminater/timminaters-integration
 
 ## Handmatig installeren
 
-1. Download `househeating_modbus_v0.6.0.zip` bij de
+1. Download `househeating_modbus_v<versie>.zip` bij de
    [nieuwste release](https://github.com/Timminater/househeating-modbus/releases/latest).
 2. Pak het archief uit op je computer.
 3. Kopieer de volledige map `custom_components/househeating` naar de configuratiemap
@@ -162,6 +139,17 @@ Open de integratieopties en kies **Energiemonitoring (alleen lezen)**. Kies Modb
 
 Zie [ENERGIEMONITORING.md](ENERGIEMONITORING.md) voor formules, kalenderperioden, meetdekking, tellerresets en beperkingen.
 
+## Dynamische prijssturing (optioneel)
+
+Open **Configureren → Dynamische prijssturing** en kies de uur- of kwartierprijssensor
+van Zonneplan. Begin met **Alleen advies** om te zien welke prijsblokken de
+integratie kiest. Met **Automatisch** kan ze vooraf verwarmen of verwarming
+tijdelijk uitstellen, binnen je comfortgrenzen. Het formulier toont de
+instellingen voor jouw opstelling, met of zonder buffervat.
+
+De functie staat standaard uit. Zie [FUNCTIES.md](FUNCTIES.md#dynamische-prijssturing)
+voor de instellingen en de voorwaarden voor automatische bediening.
+
 ## Updates en herstel
 
 Maak eerst een Home Assistant-back-up. Installeer updates via HACS en herstart
@@ -208,37 +196,3 @@ Voer contracttests en runtime-tests afzonderlijk uit: contracttests vervangen
 HA-modules door testdoubles. [GitHub Actions](.github/workflows/test.yaml) draait
 bij elke push en pull request ruff, alle drie testsuites, de vendorpariteit en
 de releasecontrole.
-
-
-## Verbeterde diagnose (0.5.0)
-
-- Temperatuurfouten uit systeemfoutwoord `0x0005` onderdrukken nu ook de
-  bijbehorende spoel-, zuig-, uitlaat- en economizermetingen. Na herstel worden
-  de metingen vanzelf weer beschikbaar.
-- Gedocumenteerde compressor- en aandrijvingsbits uit `0x0005`–`0x0009`
-  hebben benoemde, standaard uitgeschakelde diagnose-entiteiten. Onbekende of
-  gereserveerde bits blijven zichtbaar als ruwe bitidentificatie.
-- De sensor **Bedrijfsstatus** toont gerapporteerd bedrijf, wachten, doel bereikt,
-  stand-by, uit of storingsuitschakeling. Dit is geen voorspelling van de regeling:
-  bij gelijktijdig bedrijf en doel bereikt blijft de status **In bedrijf**.
-- P26/P27, P37 en P96 worden bij ingeschakelde extra registers alleen-lezen
-  uitgelezen op het langzame interval. P26/P27 = 0 betekent automatische hysterese;
-  het is geen berekende hysterese van nul graden. Deze waarden zijn volgens de
-  parametertabel hele graden en gebruiken niet de temperatuurdelers.
-- De zonesetpoints `0x0317` en `0x0319` zijn alleen ruwe diagnosewaarden.
-  Temperatuur-, mengklep- en smart-gridmetingen blijven beschikbaar via de
-  bestaande sensoren. De onvolledige zonesetpointtabel en ontbrekende waardecodering
-  voor smart grid zijn geen basis voor extra schrijfopdrachten of verzonnen labels.
-- Bij een expliciet Modbus-antwoord **ongeldig registeradres** worden optionele
-  leesblokken opgesplitst. Ondersteunde buren blijven zo beschikbaar; een volgende
-  uitlezing probeert het oorspronkelijke blok opnieuw om herstel te herkennen.
-  Time-outs, verbindingsfouten en ongeldige antwoorden veroorzaken geen extra
-  splitsingspogingen. Verplichte leesblokken en schrijfbeveiligingen blijven gelijk.
-- Aanzetten van de thermostaat behoudt de actuele ruimtemodus, of herstelt de
-  laatst waargenomen ruimtemodus tijdens deze integratiesessie als alleen warmwater
-  overbleef na uitschakelen. Zonder zo'n waarneming is verwarmen de standaard.
-  Deze herinnering wordt niet over een herstart bewaard.
-
-De bestaande vrijgaveprocedure toont al ruwe en omgerekende temperaturen en
-setpoints naast elkaar voor vergelijking met het fysieke scherm. Bevestiging
-blijft vereist; de nieuwe diagnose geeft geen automatische bedieningsvrijgave.
