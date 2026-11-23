@@ -1,5 +1,12 @@
 # Wijzigingen
 
+## 0.12.0 — 23 november 2026
+
+- Voegt **Dynamische prijssturing** toe met uur- en kwartiertarieven, advies en optionele automatische bediening.
+- Ondersteunt voorverwarmen via de ruimtethermostaat, tijdelijk hoger aanvoerdoel en uitstel tot na een dure periode.
+- Ondersteunt directe vloerverwarming en installaties met een buffervat, met optionele afgiftepompsturing en beperkt bijverwarmen tijdens de piek.
+- De nieuwe regeling staat standaard uit. De prijsplansensor toont de gekozen blokken, tarieven en geschatte besparing.
+
 ## 0.11.0 — 22 november 2026
 
 - Registreert 567 aanvullende register- en bitsensoren standaard uitgeschakeld, bij het passende subapparaat.

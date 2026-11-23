@@ -37,9 +37,19 @@ class PricePlanSensor(HouseHeatingEntity, SensorEntity):
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = [
-        "waiting", "normal", "scheduled", "preheat", "pause", "comfort_or_buffer", "holding_temperature",
-        "waiting_for_compressor", "price_unavailable", "pump_unavailable",
-        "control_unavailable", "command_unconfirmed", "manual_override",
+        "waiting",
+        "normal",
+        "scheduled",
+        "preheat",
+        "pause",
+        "comfort_or_buffer",
+        "holding_temperature",
+        "waiting_for_compressor",
+        "price_unavailable",
+        "pump_unavailable",
+        "control_unavailable",
+        "command_unconfirmed",
+        "manual_override",
     ]
 
     @property
