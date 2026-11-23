@@ -29,6 +29,7 @@ class HouseHeatingCoordinator(DataUpdateCoordinator[Snapshot]):
         self._command_lock = asyncio.Lock()
         self.monitoring = None
         self.operation = None
+        self.price_control = None
         self.last_space_mode = None
         self.catalog_registers: dict[str, CatalogRegister] = {}
 

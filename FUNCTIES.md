@@ -83,6 +83,59 @@ gereconstrueerd. De uitgebreide totaalrendementsmeting begint vanaf deze
 uitbreiding; bestaande levensduurtotalen en dag-/maandwaarden blijven bestaan.
 Zie [ENERGIEMONITORING.md](ENERGIEMONITORING.md) voor de overige kwaliteitsregels.
 
+## Dynamische prijssturing
+
+Open **Configureren → Dynamische prijssturing**, onder **Stooklijn en
+zonnestroomcorrectie**. Kies **Alleen advies** om het prijsplan en de
+actuele fase te bekijken. **Automatisch** vereist vrijgegeven Modbus-bediening,
+een warmtevraagbron, een kamerthermostaat voor comfortbewaking en bevestiging
+van de overdracht. Draag bestaande automatische aan-uitbediening van de
+warmtepomp over voordat je automatisch bedrijf inschakelt.
+
+- **Prijsbron.** Selecteer een tariefsensor met gepubliceerde uur- of
+  kwartierprijzen. Het formulier toont het huidige blok en omgerekende tarief
+  ter controle. Voor andere bronnen zijn de attribuutnaam, de velden in elk
+  interval en de deler instelbaar. Gebruik all-in afnametarieven en
+  tijdstempels met tijdzone. Gebruik punten voor geneste veldnamen.
+- **Directe vloerverwarming.** Selecteer de warmtevraag van de aangesloten
+  circuits en laat het gescheiden afgiftecircuit uit. Een optionele
+  kamerthermostaat kan tijdens het goedkope blok tijdelijk een hoger
+  ruimtedoel krijgen. De gebruikelijke aanvoertemperatuurregeling blijft actief.
+- **Buffervat en afzonderlijke afgiftepomp.** Schakel het gescheiden
+  afgiftecircuit in. Voeg zo nodig een vat- of aanvoersensor en een minimum
+  in °C toe. Selecteer alle aangesloten warmtevraagbronnen. De integratie kan
+  met een schakelaar of start- en stopknoppen de afgiftepomp laten draaien
+  zolang een circuit warmte vraagt of de geselecteerde vloerpomp draait.
+  Gebruik voor knoppen een afzonderlijke terugmelding, bijvoorbeeld toerental.
+- **Prijsplan.** De maximale prijspauze loopt in stappen van een half uur
+  van 0,5 tot 3 uur. De planner gebruikt beschikbare prijzen tot 24 uur
+  vooruit. Een geselecteerde vermogenssensor bouwt een lokaal verbruiksprofiel
+  op. Tot er voldoende metingen zijn geeft de plansensor de geschatte winst
+  per verschoven kWh. De kostenschatting gebruikt netafnametarieven en houdt
+  rekening met het ingestelde extra energieverbruik.
+- **Extra laadwarmte.** Stel optioneel een hoger aanvoerdoel in voor het
+  goedkope voorverwarmblok, met of zonder buffervat. De verhoging volgt de
+  vrijgegeven temperatuurgrenzen. Automatisch verhogen vereist curve-uitlezing,
+  een uitgeschakelde ingebouwde curve en een vrij waterdoel. Gebruik hiervoor
+  de automatische stooklijn of de prijsverhoging. Na het blok wordt het eigen
+  tijdelijke waterdoel teruggezet.
+- **Uitstellen tot na de piek.** De planner kan een goedkoper blok direct
+  na de piek kiezen. De comfortgrens en maximale overbrugging gelden ook
+  dan. Tijdens het goedkopere blok volgt de warmtepomp de normale warmtevraag.
+
+Tijdens een prijspauze wacht de regeling op de compressorstop. Ontdooien,
+comfortverlies, een te koud vat en ontbrekende prijsgegevens hebben voorrang.
+Met **Temperatuur vasthouden na prijsuitstel** kan een geselecteerde
+kamerthermostaat in een installatie met buffervat tijdelijk op een lager
+ruimtedoel bijverwarmen zodra die kamer haar comfortgrens bereikt. Bij een
+normaal doel van 20,5 °C, een marge van 0,3 °C en een thermostaatstap van
+0,1 °C wordt dat 20,3 °C. De warmtepomp volgt dan de actuele warmtevraag.
+Na afloop van het dure blok herstelt het normale ruimtedoel. Een handmatige
+wijziging krijgt voorrang. De optie staat standaard uit.
+Automatische aan-uitbediening is beschikbaar in zuivere verwarmingsmodi.
+Controleer bij een onbevestigde opdracht de werkelijke toestand en bevestig
+de overdracht opnieuw in het prijsformulier.
+
 ## Optionele eigen stooklijn
 
 Open **Configureren → Stooklijn en zonnestroomcorrectie**. Inschakelen geeft

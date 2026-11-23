@@ -166,7 +166,7 @@ class HouseHeatingOptionsFlow(OptionsFlowWithReload):
             return await self.async_step_control(user_input)
         return self.async_show_menu(
             step_id="init",
-            menu_options=["control", "monitoring", "operation", "weather_curve"],
+            menu_options=["control", "monitoring", "operation", "weather_curve", "price_control"],
             description_placeholders={
                 "register_browser_url": f"/{REGISTER_PANEL_PATH}?config_entry={self.config_entry.entry_id}"
             },
@@ -209,6 +209,10 @@ class HouseHeatingOptionsFlow(OptionsFlowWithReload):
                     data[key] = data.get(key) or ""
                 candidate = CurveConfig(**data)
                 options = dict(self.config_entry.options)
+                price = options.get("price_control", {})
+                if candidate.automatic and price.get("mode") == "automatic" and price.get("water_boost"):
+                    errors["base"] = "price_water_requirements"
+                    raise ValueError("The water target already has an automatic writer")
                 low, high = device_config(options).limits(candidate.target)
                 if candidate.water_min < low or candidate.water_max > high:
                     raise ValueError("Curve must stay inside commissioned limits")
@@ -271,6 +275,16 @@ class HouseHeatingOptionsFlow(OptionsFlowWithReload):
             else:
                 schema[vol.Required(key, default=value)] = vol.Coerce(float)
         return self.async_show_form(step_id="weather_curve", data_schema=vol.Schema(schema), errors=errors)
+
+    async def async_step_price_control(self, user_input=None):
+        from .price_options import price_options
+
+        return await price_options(self, user_input)
+
+    async def async_step_price_confirm(self, user_input=None):
+        from .price_options import price_confirm
+
+        return await price_confirm(self, user_input)
 
     async def async_step_monitoring(self, user_input=None):
         from dataclasses import asdict

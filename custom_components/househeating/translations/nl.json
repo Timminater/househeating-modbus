@@ -51,7 +51,8 @@
           "control": "Uitlezen en bediening",
           "monitoring": "Energiemonitoring (alleen lezen)",
           "operation": "Compressorstatistieken",
-          "weather_curve": "Stooklijn en zonnestroomcorrectie"
+          "weather_curve": "Stooklijn en zonnestroomcorrectie",
+          "price_control": "Dynamische prijssturing"
         }
       },
       "confirm_control": {
@@ -137,6 +138,51 @@
           "battery_low_offset": "Temperatuurcorrectie bij lage acculading (K, verwarming)",
           "hold_seconds": "Vereiste stabiliteit van een correctie (seconden)"
         }
+      },
+      "price_control": {
+        "title": "Dynamische prijssturing",
+        "description": "Kies warmtevraag en comfortbewaking voor automatische bediening. Zet andere automatiseringen voor dezelfde schakelaars uit vóór de overdracht. Neem de warmtevraag van alle aangesloten circuits mee.",
+        "data": {
+          "mode": "Bedrijfswijze",
+          "forecast_attribute": "Prognoseattribuut",
+          "start_field": "Veld voor begintijd",
+          "end_field": "Veld voor eindtijd (optioneel)",
+          "price_field": "Prijsveld (optioneel)",
+          "price_scale": "Deler voor aangepast prijsveld",
+          "interval_minutes": "Interval zonder eindtijd (minuten)",
+          "buffer": "Gescheiden afgiftecircuit met buffervat",
+          "buffer_min": "Minimale bruikbare watertemperatuur (°C)",
+          "preheat_offset": "Verhoging ruimtedoel (°C)",
+          "comfort_margin": "Toegestane daling ruimtetemperatuur (°C)",
+          "max_hours": "Maximale prijspauze (uren)",
+          "pump_overrun": "Naloop afgiftepomp (minuten)",
+          "minimum_spread": "Minimaal prijsverschil per kWh",
+          "extra_energy": "Geschat extra stroomverbruik (%)",
+          "price_entity": "Bron van stroomtarieven",
+          "climate_entity": "Thermostaat voor voorverwarmen",
+          "comfort_entities": "Te bewaken kamerthermostaten",
+          "demand_entities": "Warmtevraagbronnen",
+          "buffer_entity": "Vat- of secundaire aanvoertemperatuur",
+          "floor_pump": "Bedrijfsstatus vloerpomp",
+          "pump_start": "Afgiftepomp schakelaar of startknop",
+          "pump_stop": "Afgiftepomp stopknop",
+          "pump_feedback": "Terugmelding afgiftepomp",
+          "power_entity": "Elektrisch warmtepompvermogen (W of kW)",
+          "confirm_control": "Draag aan-uitbediening over aan HouseHeating",
+          "hold_during_peak": "Temperatuur vasthouden na prijsuitstel (met buffervat)",
+          "allow_defer": "Ook verwarming naar na de piek verschuiven",
+          "water_boost": "Verhoging aanvoerdoel tijdens goedkope uren (°C)"
+        },
+        "data_description": {
+          "hold_during_peak": "Bij de comfortgrens krijgt de kamerthermostaat tijdelijk een lager doel, afgerond volgens de thermostaatstap."
+        }
+      },
+      "price_confirm": {
+        "title": "Dynamische prijssturing",
+        "description": "Huidig interval {start} tot {end}. Omgerekend tarief {price} per kWh.",
+        "data": {
+          "confirm": "Sla deze instellingen op"
+        }
       }
     },
     "error": {
@@ -148,7 +194,12 @@
       "invalid_monitoring": "Controleer de bereiken, bron-eenheden en sensorkeuze. Externe metingen vereisen W/kW (vermogen) en Wh/kWh (energie). Eigen berekende sensoren zijn geen geldige bron.",
       "invalid_curve": "Controleer bronnen, temperatuurbereiken en bedieningsvrijgave. Bevestig automatische bediening opnieuw.",
       "max_age_too_short": "De maximale meetouderdom moet minstens twee keer het uitleesinterval zijn.",
-      "automatic_needs_native_curve": "Automatische bediening vereist uitleesbare ingebouwde curves: schakel curves in bij de bedieningsopties en gebruik protocolversie 130 of nieuwer."
+      "automatic_needs_native_curve": "Automatische bediening vereist uitleesbare ingebouwde curves: schakel curves in bij de bedieningsopties en gebruik protocolversie 130 of nieuwer.",
+      "price_control_requirements": "Automatische bediening vereist vrijgegeven bediening, warmtevraag, een kamerthermostaat en expliciete overdracht.",
+      "price_pump_configuration": "Kies een schakelaar of aparte start- en stopknoppen met onafhankelijke terugmelding.",
+      "invalid_price_forecast": "De sensor moet geldige tarieven publiceren die de huidige tijd omvatten.",
+      "price_hold_requirements": "Kies een buffervat, een kamerthermostaat en een comfortmarge groter dan 0,1 °C.",
+      "price_water_requirements": "Schakel curve-uitlezing in en gebruik één automatische schrijver voor het waterdoel."
     }
   },
   "selector": {
@@ -183,6 +234,13 @@
         "floor_setpoint": "Vloerverwarming",
         "dhw_setpoint": "Warmwater",
         "cooling_setpoint": "Koeling"
+      }
+    },
+    "price_mode": {
+      "options": {
+        "off": "Uit",
+        "advice": "Alleen advies",
+        "automatic": "Automatisch"
       }
     }
   },
@@ -813,6 +871,24 @@
           "waiting": "Wachtstand",
           "running": "In bedrijf",
           "standby": "Stand-by"
+        }
+      },
+      "price_plan": {
+        "name": "Dynamische prijssturing",
+        "state": {
+          "waiting": "Wachten",
+          "normal": "Normaal bedrijf",
+          "scheduled": "Gepland",
+          "preheat": "Voorverwarmen",
+          "pause": "Prijspauze",
+          "comfort_or_buffer": "Comfort- of buffergrens",
+          "waiting_for_compressor": "Wacht op compressorstop",
+          "price_unavailable": "Tariefprognose niet beschikbaar",
+          "pump_unavailable": "Afgiftepomp niet beschikbaar",
+          "control_unavailable": "Bediening niet beschikbaar",
+          "command_unconfirmed": "Opdracht onbevestigd",
+          "manual_override": "Handmatige bediening",
+          "holding_temperature": "Temperatuur vasthouden"
         }
       }
     },

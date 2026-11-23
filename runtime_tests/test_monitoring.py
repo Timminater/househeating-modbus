@@ -213,7 +213,7 @@ async def test_monitoring_options_never_probe_or_change_commissioning(tmp_path, 
     probe = AsyncMock(side_effect=AssertionError("monitoring must never probe/control"))
     monkeypatch.setattr(config_flow, "probe", probe)
     menu = await flow.async_step_init()
-    assert set(menu["menu_options"]) == {"control", "monitoring", "operation", "weather_curve"}
+    assert menu["menu_options"] == ["control", "monitoring", "operation", "weather_curve", "price_control"]
     assert menu["description_placeholders"]["register_browser_url"] == (
         f"/househeating-registers?config_entry={entry.entry_id}"
     )

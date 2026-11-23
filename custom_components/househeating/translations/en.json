@@ -51,7 +51,8 @@
           "control": "Polling and control",
           "monitoring": "Energy monitoring (read only)",
           "operation": "Observed compressor statistics",
-          "weather_curve": "Weather compensation and PV correction"
+          "weather_curve": "Weather compensation and PV correction",
+          "price_control": "Dynamic price control"
         }
       },
       "confirm_control": {
@@ -137,6 +138,51 @@
           "battery_low_offset": "Battery low offset",
           "hold_seconds": "Hold seconds"
         }
+      },
+      "price_control": {
+        "title": "Dynamic price control",
+        "description": "Configure heat demand and comfort monitoring for automatic operation. Disable other automations that control the same switches before handing over. Use heating demand from every connected circuit.",
+        "data": {
+          "mode": "Operating mode",
+          "forecast_attribute": "Forecast attribute",
+          "start_field": "Start time field",
+          "end_field": "End time field (optional)",
+          "price_field": "Price field (optional)",
+          "price_scale": "Custom price divisor",
+          "interval_minutes": "Interval without end time (minutes)",
+          "buffer": "Separate circuit with buffer tank",
+          "buffer_min": "Minimum usable water temperature (°C)",
+          "preheat_offset": "Room preheat increase (°C)",
+          "comfort_margin": "Allowed room temperature drop (°C)",
+          "max_hours": "Maximum price pause (hours)",
+          "pump_overrun": "Secondary pump overrun (minutes)",
+          "minimum_spread": "Minimum tariff difference per kWh",
+          "extra_energy": "Estimated extra energy (%)",
+          "price_entity": "Electricity tariff source",
+          "climate_entity": "Thermostat for preheating",
+          "comfort_entities": "Rooms to monitor for comfort",
+          "demand_entities": "Heat demand sources",
+          "buffer_entity": "Buffer or secondary supply temperature",
+          "floor_pump": "Floor pump running state",
+          "pump_start": "Secondary pump switch or start button",
+          "pump_stop": "Secondary pump stop button",
+          "pump_feedback": "Secondary pump feedback",
+          "power_entity": "Heat pump electric power (W or kW)",
+          "confirm_control": "Hand over heat pump on/off control to HouseHeating",
+          "hold_during_peak": "Hold room temperature after a price pause (with buffer tank)",
+          "allow_defer": "Also allow heating to shift after the price peak",
+          "water_boost": "Increase supply target in cheap periods (°C)"
+        },
+        "data_description": {
+          "hold_during_peak": "At the comfort limit, the room thermostat temporarily receives a lower target, rounded to a supported step."
+        }
+      },
+      "price_confirm": {
+        "title": "Dynamic price control",
+        "description": "Current interval {start} to {end}. Converted price {price} per kWh.",
+        "data": {
+          "confirm": "Save these settings"
+        }
       }
     },
     "error": {
@@ -148,7 +194,12 @@
       "invalid_monitoring": "Check ranges, source units and sensor selection. External sources require W/kW (power) and Wh/kWh (energy). Own calculated sensors cannot be sources.",
       "invalid_curve": "Check sources, temperature limits and commissioning. Explicitly confirm automatic control again.",
       "max_age_too_short": "Maximum measurement age must be at least twice the polling interval.",
-      "automatic_needs_native_curve": "Automatic control needs readable native curves: enable curves in the control options and use protocol version 130 or later."
+      "automatic_needs_native_curve": "Automatic control needs readable native curves: enable curves in the control options and use protocol version 130 or later.",
+      "price_control_requirements": "Automatic operation needs commissioned control, heat demand, a room thermostat and explicit handover.",
+      "price_pump_configuration": "Select a switch or separate start and stop buttons with independent feedback.",
+      "invalid_price_forecast": "The sensor must publish valid tariffs covering the current time.",
+      "price_hold_requirements": "Select a buffer tank, a room thermostat and a comfort margin above 0.1 °C.",
+      "price_water_requirements": "Enable curve readout and use one automatic controller for the water target."
     }
   },
   "selector": {
@@ -183,6 +234,13 @@
         "floor_setpoint": "Floor heating",
         "dhw_setpoint": "Domestic hot water",
         "cooling_setpoint": "Cooling"
+      }
+    },
+    "price_mode": {
+      "options": {
+        "off": "Off",
+        "advice": "Advice only",
+        "automatic": "Automatic"
       }
     }
   },
@@ -813,6 +871,24 @@
           "waiting": "Waiting",
           "running": "Running",
           "standby": "Standby"
+        }
+      },
+      "price_plan": {
+        "name": "Dynamic price control",
+        "state": {
+          "waiting": "Waiting",
+          "normal": "Normal operation",
+          "scheduled": "Scheduled",
+          "preheat": "Preheating",
+          "pause": "Price pause",
+          "comfort_or_buffer": "Comfort or buffer limit",
+          "waiting_for_compressor": "Waiting for compressor to stop",
+          "price_unavailable": "Tariff forecast unavailable",
+          "pump_unavailable": "Secondary pump unavailable",
+          "control_unavailable": "Control unavailable",
+          "command_unconfirmed": "Command not confirmed",
+          "manual_override": "Manual operation",
+          "holding_temperature": "Holding room temperature"
         }
       }
     },

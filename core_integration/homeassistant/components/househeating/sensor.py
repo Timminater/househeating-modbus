@@ -24,11 +24,31 @@ async def async_setup_entry(hass, entry, async_add_entities):
         async_add_entities(
             MonitoringSensor(coordinator, key, *description) for key, description in MONITORING_SENSORS.items()
         )
+    if coordinator.price_control is not None:
+        async_add_entities([PricePlanSensor(coordinator, "price_plan")])
     if coordinator.operation is not None:
         keys = list(OPERATION_SENSORS)[:5] if coordinator.operation.statistics else []
         if coordinator.operation.config.enabled:
             keys.extend(list(OPERATION_SENSORS)[5:])
         async_add_entities(OperationSensor(coordinator, key, *OPERATION_SENSORS[key]) for key in keys)
+
+
+class PricePlanSensor(HouseHeatingEntity, SensorEntity):
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = [
+        "waiting", "normal", "scheduled", "preheat", "pause", "comfort_or_buffer", "holding_temperature",
+        "waiting_for_compressor", "price_unavailable", "pump_unavailable",
+        "control_unavailable", "command_unconfirmed", "manual_override",
+    ]
+
+    @property
+    def native_value(self):
+        return self.coordinator.price_control.status
+
+    @property
+    def extra_state_attributes(self):
+        return self.coordinator.price_control.attributes()
 
 
 class CatalogSensor(CatalogEntity, SensorEntity):

@@ -89,6 +89,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: HouseHeatingConfigEntry)
         await coordinator.operation.async_load()
         if coordinator.operation.storage_invalid:
             _async_storage_issue(hass, entry, "operation")
+    if options.get("price_control", {}).get("mode") in ("advice", "automatic"):
+        from .price_control import PriceManager
+
+        coordinator.price_control = PriceManager(hass, coordinator)
+        await coordinator.price_control.load()
     try:
         await coordinator.async_config_entry_first_refresh()
     except BaseException:
@@ -115,6 +120,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: HouseHeatingConfigEntry)
         coordinator.monitoring.start()
     if coordinator.operation is not None:
         coordinator.operation.start()
+    if coordinator.price_control is not None:
+        coordinator.price_control.start()
     return True
 
 
@@ -140,6 +147,8 @@ def _firmware_listener(hass: HomeAssistant, entry: HouseHeatingConfigEntry, coor
 
 
 async def _async_close_managers(coordinator: HouseHeatingCoordinator) -> None:
+    if coordinator.price_control is not None:
+        await coordinator.price_control.close()
     if coordinator.monitoring is not None:
         await coordinator.monitoring.async_close()
     if coordinator.operation is not None:
@@ -149,11 +158,15 @@ async def _async_close_managers(coordinator: HouseHeatingCoordinator) -> None:
 async def async_unload_entry(hass: HomeAssistant, entry: HouseHeatingConfigEntry) -> bool:
     # async_get_unit registered the shared connection's release callback itself.
     coordinator = entry.runtime_data
+    if coordinator.price_control is not None:
+        await coordinator.price_control.close()
     # Stop automatic curve commands before the entities disappear.
     if coordinator.operation is not None:
         await coordinator.operation.async_close()
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if not unloaded:
+        if coordinator.price_control is not None:
+            coordinator.price_control.start()
         # The entry stays loaded: resume statistics and the weather curve.
         if coordinator.operation is not None:
             coordinator.operation.reopen()
