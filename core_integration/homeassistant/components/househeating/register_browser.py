@@ -1,4 +1,4 @@
-"""Serve the read-only HouseHeating register panel to administrators."""
+"""Serve the HouseHeating register panel to administrators."""
 
 from __future__ import annotations
 
@@ -11,11 +11,13 @@ from homeassistant.components import panel_custom, websocket_api
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 
 from househeating_modbus import CommunicationError
+from househeating_modbus.device import BROWSER_PARAMETER_LIMITS
 from househeating_modbus.models import decode
-from househeating_modbus.registers import BY_ADDRESS, WRITABLE_ADDRESSES
+from househeating_modbus.registers import BY_ADDRESS
 from .catalog import CATALOG_KEY, CATALOG_SCALES, ENTITY_REGISTERS, CatalogRow, catalog_registers
 from .const import DOMAIN, REGISTER_PANEL_PATH
 
@@ -35,9 +37,18 @@ async def async_register_browser(hass):
     catalog, revision, registers = await hass.async_add_executor_job(_load_assets)
     script_url = f"/househeating_static/register_browser-{revision}.js"
     readable = frozenset(address for address, _, bit, *_, allowed in catalog if bit is None and allowed)
-    hass.data[CATALOG_KEY] = (catalog, readable, registers)
+    writable = {
+        row.address: row
+        for row in catalog
+        if row.bit is None
+        and row.address == row.end
+        and row.readable
+        and row.access.startswith("RW ")
+        and row.address != 0x1018  # The manual assigns both sterilization and factory reset here.
+    }
+    hass.data[CATALOG_KEY] = (catalog, readable, registers, writable)
     await hass.http.async_register_static_paths([StaticPathConfig(script_url, str(SCRIPT_PATH), False)])
-    for command in (ws_catalog, ws_snapshot, ws_read):
+    for command in (ws_catalog, ws_snapshot, ws_read, ws_write):
         websocket_api.async_register_command(hass, command)
     await panel_custom.async_register_panel(
         hass,
@@ -99,8 +110,9 @@ def _register_entities(hass, entry_id, catalog):
 @websocket_api.websocket_command({vol.Required("type"): "househeating/register_browser/catalog"})
 @callback
 def ws_catalog(hass, connection, msg):
-    catalog, _, _ = hass.data[CATALOG_KEY]
-    connection.send_result(msg["id"], {"rows": catalog, "writable": sorted(WRITABLE_ADDRESSES)})
+    catalog, _, _, writable = hass.data[CATALOG_KEY]
+    limits = BROWSER_PARAMETER_LIMITS | {address: (0, 1) for address in writable if 0x1000 <= address <= 0x10FF}
+    connection.send_result(msg["id"], {"rows": catalog, "writable": sorted(writable), "limits": limits})
 
 
 @websocket_api.require_admin
@@ -121,6 +133,8 @@ def ws_snapshot(hass, connection, msg):
             entry_id=entry.entry_id,
             online=coordinator.last_update_success and device.unit.connected,
             protocol=snapshot.identity.protocol if snapshot.identity else None,
+            control_ready=device.control_ready,
+            curve_control=device.config.curves,
             samples={
                 address: _value(device, address, raw, snapshot.samples[address].end, snapshot)
                 for address, raw in snapshot.raw.items()
@@ -147,7 +161,7 @@ async def ws_read(hass, connection, msg):
         connection.send_error(msg["id"], "not_loaded", "HouseHeating entry is not loaded")
         return
     address = msg["address"]
-    _, readable, _ = hass.data[CATALOG_KEY]
+    readable = hass.data[CATALOG_KEY][1]
     if type(address) is not int or address not in readable:
         connection.send_error(
             msg["id"], "not_documented", "Address is not an individually documented readable register"
@@ -165,3 +179,34 @@ async def ws_read(hass, connection, msg):
         connection.send_error(msg["id"], "read_failed", "The Modbus read failed or the firmware did not answer")
         return
     connection.send_result(msg["id"], _value(device, address, raw, at, device.snapshot, on_demand=True))
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "househeating/register_browser/write",
+        vol.Required("entry_id"): str,
+        vol.Required("address"): vol.All(int, vol.Range(min=0, max=0xFFFF)),
+        vol.Required("value"): vol.All(int, vol.Range(min=0, max=0xFFFF)),
+        vol.Required("expected"): vol.All(int, vol.Range(min=0, max=0xFFFF)),
+    }
+)
+@websocket_api.async_response
+async def ws_write(hass, connection, msg):
+    entry = _loaded_entry(hass, msg["entry_id"])
+    if not entry:
+        connection.send_error(msg["id"], "not_loaded", "HouseHeating entry is not loaded")
+        return
+    address = msg["address"]
+    if type(address) is not int or address not in hass.data[CATALOG_KEY][3]:
+        connection.send_error(msg["id"], "not_writable", "Register is not supported for writing")
+        return
+    coordinator = entry.runtime_data
+    device = coordinator.device
+    try:
+        raw, at, result = await coordinator.async_write_browser_register(address, msg["value"], msg["expected"])
+    except HomeAssistantError as err:
+        connection.send_error(msg["id"], err.translation_key or "command_failed", str(err))
+        return
+    sample = _value(device, address, raw, at, device.snapshot, on_demand=True)
+    connection.send_result(msg["id"], {"sample": sample, "result": result})

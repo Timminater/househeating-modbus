@@ -14,6 +14,7 @@ energiemonitoring en optionele sturing op buitentemperatuur, zonnestroom en dyna
 
 ## Releaseoverzicht
 
+- **v0.12.2** · Schrijft gedocumenteerde registers en spoelen vanuit de registerbrowser met terugleescontrole.
 - **v0.12.1** · Eenvoudiger prijsformulier met Zonneplan-keuze, contextafhankelijke velden en uitleg per instelling.
 - **v0.12.0** · Dynamische prijssturing met advies, voorverwarmen en uitstel tijdens dure uren.
 - **v0.11.0** · Optionele register- en bitsensoren met gedeelde Modbus-uitlezing.

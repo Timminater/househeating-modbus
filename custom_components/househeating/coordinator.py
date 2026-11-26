@@ -74,19 +74,31 @@ class HouseHeatingCoordinator(DataUpdateCoordinator[Snapshot]):
         Each write is verified before proceeding; a failed step aborts the plan.
         No rollback or automatic repeat is safe after an uncertain acknowledgement.
         """
+
+        async def execute():
+            for key, value in plan(self.device.snapshot):
+                await self.device.async_write(key, value)
+
+        await self._async_execute_command(execute)
+
+    async def async_write_browser_register(self, address: int, value: int, expected: int) -> tuple[int, float, str]:
+        return await self._async_execute_command(
+            lambda: self.device.async_write_browser_register(address, value, expected)
+        )
+
+    async def _async_execute_command(self, execute):
         async with self._command_lock:
             await self.async_refresh()
-            await self._async_control_locked(plan)
+            return await self._async_execute_locked(execute)
 
-    async def _async_control_locked(self, plan) -> None:
+    async def _async_execute_locked(self, execute):
         if not self.last_update_success:
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="device_unavailable")
         if not self.device.control_ready:
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="control_locked")
         try:
             self.device.validate_for_control()
-            for key, value in plan(self.device.snapshot):
-                await self.device.async_write(key, value)
+            result = await execute()
         except HeatPumpError as err:
             # Never present an unconfirmed write as success. Refresh without resending.
             await self.async_refresh()
@@ -96,6 +108,7 @@ class HouseHeatingCoordinator(DataUpdateCoordinator[Snapshot]):
                 translation_domain=DOMAIN, translation_key=key, translation_placeholders={"error": str(err)}
             ) from err
         await self.async_refresh()
+        return result
 
     async def async_refresh_all(self) -> None:
         self.force_optional = True

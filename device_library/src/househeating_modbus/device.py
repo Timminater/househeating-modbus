@@ -1,7 +1,7 @@
 """HouseHeating/SolarEast register protocol over a supplied ModbusUnit.
 
 The caller owns the connection. This module never opens or closes a transport,
-never writes at startup, and never sends service/factory commands.
+and never writes at startup.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from time import monotonic, time
 from typing import TYPE_CHECKING
 
 from .models import CommunicationError, DeviceConfig, Identity, ReadWindow, Snapshot, VerificationError, WriteRejected
-from .registers import BY_KEY, SELECTS, SETPOINT_KEYS, WRITABLE_KEYS
+from .registers import BY_ADDRESS, BY_KEY, SELECTS, SETPOINT_KEYS, WRITABLE_ADDRESSES, WRITABLE_KEYS
 
 if TYPE_CHECKING:
     from modbus_connection import ModbusUnit
@@ -35,6 +35,20 @@ HOT_WATER_FAST_BLOCKS = (("dhw_temperature", 0x0054, 1),)
 HOT_WATER_SLOW_BLOCKS = (("dhw_config", 0x0130, 1),)
 IDENTITY_BLOCK = (0x0360, 4)
 CURVE_BLOCK = (0x0313, 4)
+
+# Explicitly reviewed factory parameters for single-register maintenance.
+BROWSER_PARAMETER_LIMITS = {
+    0x011A: (0, 10),  # P26: heating/cooling hysteresis
+    0x011B: (0, 10),  # P27: floor-heating hysteresis
+    0x0125: (0, 2),  # P37: stop behavior at target
+    0x0139: (15, 60),  # P57–P59: heating minimum frequencies
+    0x013A: (15, 60),
+    0x013B: (15, 60),
+    0x0158: (20, 70),  # P88: silent-mode compressor limit
+    0x0159: (20, 60),  # P89: silent-mode fan limit
+    0x0174: (0, 1),  # P116: inlet/outlet temperature control
+    0x01A1: (0, 4),  # P161: documented auxiliary pump selections
+}
 
 
 class HeatPump:
@@ -297,6 +311,34 @@ class HeatPump:
     async def async_write(self, key: str, value: float | int | str | bool) -> None:
         """Validate, write ONCE using FC06, then verify without retrying the write."""
         encoded = self._encode(key, value)
+        await self._async_write_verified(BY_KEY[key].address, encoded, key=key)
+
+    async def async_write_browser_register(self, address: int, encoded: int, expected: int) -> tuple[int, float, str]:
+        """Write a catalog-authorized address using its raw Modbus value."""
+        if type(address) is not int or not 0 <= address <= 0xFFFF:
+            raise WriteRejected("Invalid Modbus address")
+        if any(type(value) is not int or not 0 <= value <= 0xFFFF for value in (encoded, expected)):
+            raise WriteRejected("Expected and requested values must be 16-bit unsigned integers")
+        coil = 0x1000 <= address <= 0x10FF
+        low, high = (0, 1) if coil else BROWSER_PARAMETER_LIMITS.get(address, (0, 0xFFFF))
+        if not low <= encoded <= high:
+            raise WriteRejected(f"Value must be within {low}..{high}")
+        key = f"0x{address:04X}"
+        if address in WRITABLE_ADDRESSES:
+            key = BY_ADDRESS[address].key
+            if key in SELECTS:
+                value = next((option for option, raw in SELECTS[key].items() if raw == encoded), None)
+            elif key in SETPOINT_KEYS:
+                value = encoded / self.config.setpoint_divisor
+            else:
+                value = encoded
+            if self._encode(key, value) != encoded:
+                raise WriteRejected("The requested raw value does not match the configured scaling")
+        return await self._async_write_verified(address, encoded, key=key, expected=expected, coil=coil)
+
+    async def _async_write_verified(
+        self, address: int, encoded: int, *, key: str, expected: int | None = None, coil: bool = False
+    ) -> tuple[int, float, str]:
         if key.endswith("_curve") and not self.config.curves:
             raise WriteRejected("Curve control is disabled in this configuration")
         if self.authorized_identity is None:
@@ -308,8 +350,11 @@ class HeatPump:
                 raise WriteRejected("Firmware/protocol identity changed; control has been locked")
             if key.endswith("_curve") and fresh_identity.protocol < 130:
                 raise WriteRejected("Individual curve registers require protocol version 130 or later")
-            address = BY_KEY[key].address
-            current = (await self._read(address, 1))[address]
+            if coil and fresh_identity.protocol < 130:
+                raise WriteRejected("Writing coils requires protocol version 130 or later")
+            current = await self._read_register(address, coil=coil)
+            if expected is not None and current != expected:
+                raise WriteRejected(f"Register changed to {current}; read it again before writing")
             # A fresh setpoint sanity check blocks a wrong scaling factor even after setup.
             if key in SETPOINT_KEYS:
                 if Snapshot({address: current}).value(key, self.config) is None:
@@ -321,10 +366,13 @@ class HeatPump:
             if current == encoded:
                 self._accept_readback(address, current)
                 self.last_write = {"key": key, "raw": encoded, "result": "unchanged", "time": time()}
-                return
+                return current, time(), "unchanged"
             self.last_write = {"key": key, "raw": encoded, "result": "unconfirmed", "time": time()}
             try:
-                await self.unit.write_register(address, encoded)
+                if coil:
+                    await self.unit.write_coil(address, bool(encoded))
+                else:
+                    await self.unit.write_register(address, encoded)
             except Exception as err:
                 raise VerificationError(
                     "Write acknowledgement failed; command may have reached the device. Read its state before retrying."
@@ -333,19 +381,21 @@ class HeatPump:
             for _ in range(3):
                 await asyncio.sleep(self.config.verify_delay)
                 try:
-                    actual = (await self._read(address, 1))[address]
+                    actual = await self._read_register(address, coil=coil)
                 except CommunicationError:
                     continue
                 if actual == encoded:
                     self._accept_readback(address, actual)
                     self.last_write["result"] = "verified"
-                    return
+                    return actual, time(), "verified"
             raise VerificationError(
                 f"Readback mismatch for {key}: requested {encoded}, received {actual}; no automatic rewrite performed"
             )
 
     def _accept_readback(self, address: int, actual: int) -> None:
         """Adopt an observed value, including an externally changed idempotent target."""
+        self._catalog_values.pop(address, None)
+        self._catalog_attempts.pop(address, None)
         updated = dict(self.snapshot.raw)
         updated[address] = actual
         self.snapshot = replace(self.snapshot, raw=updated)

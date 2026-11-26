@@ -288,6 +288,23 @@ kan even nodig hebben om een ingeschakelde entiteit te laden.
 Gebruik **Met HA-entiteit** of **Uitgeschakeld** als snelkeuze.
 Onder **Filters** vind je ook de registergroep, uitleesstatus en Modbus-toegang.
 
+Bij ondersteunde registers kun je via **Waarde schrijven** een ruwe
+registerwaarde invoeren en bevestigen. Geef bediening eerst vrij in de
+integratie-instellingen. Je hebt hiervoor geen gekoppelde entiteit nodig.
+De integratie leest het register opnieuw vóór de schrijfactie. Is de waarde
+intussen gewijzigd, lees het register dan opnieuw uit voordat je verdergaat.
+Na de schrijfactie toont de browser de teruggelezen waarde. Bij een
+onbevestigde actie volgt geen automatische schrijfpoging.
+
+De browser gebruikt de schrijfbare afzonderlijke adressen uit de handleiding,
+waaronder fabrieksparameters P en L, gebruikersparameters, gebruikersopdrachten
+en spoelen. Een bitveld wijzig je via het ruwe registerwoord. Spoelen accepteren
+0 of 1 en vereisen protocol 130 of hoger. Gebruik voor negatieve registerwaarden
+de bijbehorende ongetekende 16-bits code. Gereserveerde en ongedocumenteerde
+adressen zijn uitgesloten. Spoel `0x1018` is uitgezonderd omdat de handleiding daar
+zowel sterilisatie als fabrieksreset noemt. Een opdracht die zichzelf wist kan
+al zijn uitgevoerd terwijl teruglezen de ingevoerde waarde niet meer bevestigt.
+
 De aanvullende sensoren zijn standaard uitgeschakeld. Je kunt ze ook activeren
 via de lijst met uitgeschakelde entiteiten op het betreffende subapparaat.
 De sensoren lezen uitsluitend uit en gebruiken de ruwe waarde als de schaal

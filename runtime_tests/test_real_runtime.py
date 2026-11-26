@@ -116,6 +116,61 @@ async def test_register_browser_reads_only_documented_addresses(tmp_path, monkey
     assert connection.send_error.call_args.args[1] == "read_failed"
     assert not unit.writes
 
+    handler, schema = hass.data["websocket_api"]["househeating/register_browser/write"]
+    assert handler is browser.ws_write
+    request = schema(
+        {
+            **message,
+            "type": "househeating/register_browser/write",
+            "address": 0x013A,
+            "value": 35,
+            "expected": 40,
+        }
+    )
+    connection.user.is_admin = False
+    with pytest.raises(Unauthorized):
+        browser.ws_write(hass, connection, request)
+    connection.user.is_admin = True
+    write = unwrap(browser.ws_write)
+    unit.data[0x013A] = 40
+    await write(hass, connection, {**request, "address": 0x001C})
+    assert connection.send_error.call_args.args[1] == "not_writable"
+    await write(hass, connection, {**request, "expected": 39})
+    assert connection.send_error.call_args.args[1] == "command_rejected"
+    await write(hass, connection, {**request, "value": 61})
+    assert connection.send_error.call_args.args[1] == "command_rejected"
+    assert not unit.writes
+
+    unit.drop_write = True
+    await write(hass, connection, request)
+    assert connection.send_error.call_args.args[1] == "command_failed"
+    assert unit.writes == [(0x013A, 35)]
+    unit.drop_write = False
+    await write(hass, connection, request)
+    result = connection.send_result.call_args.args[1]
+    assert result["result"] == "verified"
+    assert result["sample"]["raw"] == unit.data[0x013A] == 35
+    assert unit.writes == [(0x013A, 35), (0x013A, 35)]
+    await write(hass, connection, {**request, "expected": 35})
+    assert connection.send_result.call_args.args[1]["result"] == "unchanged"
+    assert len(unit.writes) == 2
+
+    browser.ws_catalog(hass, connection, message)
+    writable = connection.send_result.call_args.args[1]["writable"]
+    assert {0x013A, 0x0192, 0x0800, 0x0331, 0x1000, 0x101D} <= set(writable)
+    assert not {0x001C, 0x0308, 0x1018, 0x1002} & set(writable)
+    unit.data[0x0192] = 35
+    await write(hass, connection, {**request, "address": 0x0192, "expected": 35, "value": 36})
+    assert connection.send_result.call_args.args[1]["sample"]["raw"] == 36
+    assert unit.writes[-1] == (0x0192, 36)
+
+    unit.read_coils = AsyncMock(side_effect=[[False], [True]])
+    unit.write_coil = AsyncMock()
+    await write(hass, connection, {**request, "address": 0x1000, "expected": 0, "value": 1})
+    unit.write_coil.assert_awaited_once_with(0x1000, True)
+    assert unit.read_coils.await_count == 2
+    assert connection.send_result.call_args.args[1]["sample"]["raw"] == 1
+
 
 async def harness(tmp_path, *, authorized=True):
     hass = HomeAssistant(str(tmp_path))

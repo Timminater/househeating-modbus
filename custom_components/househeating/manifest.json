@@ -1,7 +1,7 @@
 {
   "domain": "househeating",
   "name": "HouseHeating Modbus",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "codeowners": [
     "@Timminater"
   ],

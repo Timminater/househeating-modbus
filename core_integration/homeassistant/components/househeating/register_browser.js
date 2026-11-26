@@ -36,6 +36,8 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
     this.openGroups = new Map();
     this.openDetails = new Set();
     this.renderedRows = new Map();
+    this.writeDrafts = new Map();
+    this.writeMessages = new Map();
   }
 
   connectedCallback() {
@@ -129,6 +131,8 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
         .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
           grid-template-areas: "register entity"; gap: 16px; }
         .register-details { grid-area: register; }
+        .register-details form { margin-block-start: 12px; }
+        .register-details form input { width: 7em; margin-inline-end: 6px; }
         .entity-details { grid-area: entity; }
         .mobile-label { display: none; }
         .detail-row:last-child td { border-radius: 0 0 13px 13px; }
@@ -276,6 +280,7 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
       this.rows = reply.rows;
       this.words = new Map(this.rows.filter(([start, end, bit]) => start === end && bit == null).map((row) => [row[0], row]));
       this.writable = new Set(reply.writable);
+      this.writeLimits = reply.limits ?? {};
       this.readable = new Set(this.rows.filter((r) => r[2] == null && r[8]).map((r) => r[0]));
       for (const group of new Set(this.rows.map((r) => r[3]))) this.ui.group.append(option(group, group));
       this.loaded = true;
@@ -387,6 +392,78 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
       this.busy.delete(key);
       if (rerender && this.isConnected) this.render();
     }
+  }
+
+  async write(address, name, value, expected) {
+    const entry = this.entry;
+    const key = this.readKey(address, entry);
+    if (this.busy.has(key) || this.batch || !this.snapshot?.control_ready || !this.canRead(address)) return;
+    const device = this.ui.device.selectedOptions[0]?.textContent ?? entry;
+    if (!window.confirm(device + " · " + name + " (" + hex(address) + ")\nRuwe waarde " +
+        expected + " wijzigen naar " + value + "?")) return;
+    this.busy.add(key);
+    this.writeDrafts.delete(key);
+    this.writeMessages.set(key, "Schrijven en teruglezen…");
+    this.render();
+    try {
+      const reply = await this._hass.callWS({
+        type: PREFIX + "/write", entry_id: entry, address, value, expected,
+      });
+      this.manual.set(key, reply.sample);
+      this.writeMessages.set(key, reply.result === "unchanged"
+        ? "Al ingesteld. Teruggelezen waarde: " + reply.sample.raw + "."
+        : "Schrijven bevestigd. Teruggelezen waarde: " + reply.sample.raw + ".");
+    } catch (error) {
+      this.writeMessages.set(key, "Schrijven niet bevestigd. Lees het register opnieuw uit. " + (error.message ?? ""));
+    } finally {
+      this.busy.delete(key);
+      if (this.isConnected) this.render();
+    }
+  }
+
+  renderWrite(address, name, sample) {
+    const key = this.readKey(address);
+    const form = element("form");
+    const input = element("input");
+    const label = element("label", "Nieuwe ruwe registerwaarde ");
+    input.type = "number";
+    input.required = true;
+    input.step = "1";
+    const [low, high] = this.writeLimits[address] ?? [0, 65535];
+    input.min = low;
+    input.max = high;
+    input.value = this.writeDrafts.get(key) ?? "";
+    input.dataset.focus = "write-value/" + key;
+    input.oninput = () => this.writeDrafts.set(key, input.value);
+    label.append(input);
+    const button = element("button", "Waarde schrijven");
+    button.type = "submit";
+    button.dataset.focus = "write/" + key;
+    const curve = address >= 0x0313 && address <= 0x0316;
+    const coil = address >= 0x1000 && address <= 0x10ff;
+    const enabled = this.snapshot?.online && this.snapshot.control_ready && this.canRead(address) &&
+      (!curve || (this.snapshot.curve_control && this.snapshot.protocol >= 130));
+    input.disabled = button.disabled = !enabled || !sample || this.busy.has(key) || !!this.batch;
+    form.append(label, button);
+    if (!this.snapshot?.control_ready) this.sub(form, "Geef bediening eerst vrij in de integratie-instellingen.");
+    else if (curve && !enabled) this.sub(form, "Curvebediening vereist protocol 130 of hoger en vrijgave van curven.");
+    else if (coil && this.snapshot.protocol < 130) this.sub(form, "Spoelen vereisen protocol 130 of hoger.");
+    else if (!sample) this.sub(form, "Lees eerst de huidige waarde uit.");
+    else if (this.writeLimits[address]) this.sub(form, "Toegestaan: " + low + "–" + high + ".");
+    else this.sub(form, "Gebruik de ruwe 16-bits waarde volgens de handleiding.");
+    if ((address >= 0x0330 && address < 0x0360) || coil) {
+      this.sub(form, "Dit is een apparaatopdracht. Sommige opdrachten wissen zichzelf na uitvoering.");
+    }
+    if (this.writeMessages.has(key)) {
+      const status = element("p", this.writeMessages.get(key));
+      status.setAttribute("role", "status");
+      form.append(status);
+    }
+    form.onsubmit = (event) => {
+      event.preventDefault();
+      this.write(address, name, input.valueAsNumber, sample.raw);
+    };
+    return form;
   }
 
   async readBatch(all = false) {
@@ -602,7 +679,7 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
     return cell;
   }
 
-  renderDetails([address, end, bit, group, , access, pdf, detail, readable], ownsReadAction) {
+  renderDetails([address, end, bit, group, name, access, pdf, detail, readable], ownsReadAction) {
     const row = element("tr");
     row.className = "detail-row";
     const cell = element("td");
@@ -645,6 +722,13 @@ class HouseHeatingRegisterBrowser extends HTMLElement {
       this.sub(register, "De uitleesknop staat bij het eerste geopende detail voor " + hex(address) + ".");
     }
     if (this.errors.has(readKey)) this.sub(register, this.errors.get(readKey), "warn");
+    if (bit == null && address === end && this.writable.has(address)) {
+      register.append(this.renderWrite(address, name, sample));
+    } else if (bit != null && this.writable.has(address)) {
+      this.sub(register, "Wijzig dit bit via het ruwe registerwoord " + hex(address) + ".");
+    } else if (address === 0x1018) {
+      this.sub(register, "De handleiding koppelt twee verschillende opdrachten aan dit adres.");
+    }
     const ha = element("section");
     ha.className = "entity-details";
     ha.append(element("h2", "Home Assistant-entiteit"));

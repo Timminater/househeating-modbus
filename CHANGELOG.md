@@ -1,5 +1,10 @@
 # Wijzigingen
 
+## 0.12.2 — 26 november 2026
+
+- Laat beheerders gedocumenteerde schrijfbare registers en spoelen vanuit de registerbrowser wijzigen, zonder entiteit.
+- Controleert de huidige waarde vóór het schrijven en toont de teruggelezen waarde. Apparaatopdrachten die zichzelf wissen kunnen een onbevestigde status geven.
+
 ## 0.12.1 — 23 november 2026
 
 - Vereenvoudigt de prijsinstellingen. Kies de uur- of kwartierprijs van Zonneplan en de integratie leest het tarief automatisch in.
