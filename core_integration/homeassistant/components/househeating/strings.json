@@ -180,12 +180,12 @@
               "allow_defer": "Also allow heating to shift after the price peak"
             },
             "data_description": {
-              "comfort_entities": "Select rooms that must stay comfortable. A room below its comfort limit ends the price pause.",
-              "climate_entity": "Select the thermostat whose target may change temporarily. Leave empty to plan around heat demand and comfort only.",
-              "preheat_offset": "How many degrees to add to the room target in a cheap period. Use 0 to skip preheating the room.",
-              "comfort_margin": "How far may a monitored room drop below its normal target before heating resumes?",
-              "water_boost": "Increase the water target by this many degrees in a cheap period. Use 0 to leave the water target to its existing controller.",
-              "allow_defer": "Allow using a cheaper period immediately after the peak when the rooms can stay comfortable long enough."
+              "comfort_entities": "Select the thermostats for rooms you want to keep comfortable, such as the living room or a room that cools quickly. Heating can resume when any monitored room becomes too cold. Leave empty to use the thermostat below for comfort monitoring too.",
+              "climate_entity": "Select the thermostat whose target HouseHeating may change temporarily. Leave empty to raise only the supply water target or to monitor rooms without changing their targets.",
+              "preheat_offset": "How much warmer may the room get before an expensive period? With 0.3 °C, a target of 20.5 °C becomes 20.8 °C. Applies only if you select a thermostat above. Enter 0 to skip extra room preheating.",
+              "comfort_margin": "How far may a monitored room cool during an expensive block? With a normal target of 20.5 °C and a margin of 0.3 °C, heating can resume when the room reaches 20.2 °C. Choose a smaller margin if you prefer steadier temperatures.",
+              "water_boost": "How many degrees to add to the supply water target when preheating cheaply. A target of 40 °C and a boost of 2 °C temporarily gives 42 °C. Enter 0 to leave the target as it is. Also enter 0 if you use HouseHeating’s automatic weather curve.",
+              "allow_defer": "Enable this to let the planner delay heating until a cheaper block immediately after the peak. Comfort limits still apply. Leave it off to consider preheating before the peak only."
             }
           },
           "heating": {
@@ -195,8 +195,8 @@
               "confirm_control": "Hand over heat pump on/off control to HouseHeating"
             },
             "data_description": {
-              "demand_entities": "Select thermostats or signals that indicate a call for heat. Include all circuits the heat pump serves.",
-              "confirm_control": "Confirm that HouseHeating may automatically start and stop heating. Disable competing automations for the same heat pump first."
+              "demand_entities": "Select a signal for each heating circuit that shows when it needs heat, such as its thermostat or the floor heating pump switch. Include all circuits supplied by this heat pump.",
+              "confirm_control": "Confirm that HouseHeating may turn the heat pump on and off. Disable any other automation that turns the same heat pump on and off first. Confirm this again when saving."
             }
           },
           "hydraulics": {
@@ -212,14 +212,14 @@
               "pump_overrun": "Secondary pump overrun (minutes)"
             },
             "data_description": {
-              "buffer_entity": "Optional. Select the tank temperature or the temperature of water leaving the tank for the rooms.",
-              "buffer_min": "The price pause ends when the selected water sensor drops below this value. Applies only with a water sensor.",
-              "hold_during_peak": "Optional with a buffer tank. At the comfort limit, the thermostat can maintain a temporarily lower target during the peak.",
-              "floor_pump": "Optional. Select the running state of the floor pump so the shared circulation pump keeps running with it.",
-              "pump_start": "Optional. Select the switch or start button of the pump after the tank. Leave empty if another controller runs it.",
-              "pump_stop": "For button control only. Select the separate stop button.",
-              "pump_feedback": "Required for button control. Select a running-state or speed sensor to confirm whether the pump is running.",
-              "pump_overrun": "How many minutes should the circulation pump continue after all heat demand ends?"
+              "buffer_entity": "Optional. Select a sensor that measures the buffer tank or the water leaving the tank for the rooms. Leave empty if you have no such sensor.",
+              "buffer_min": "Enter the lowest water temperature at which your radiators or floors still deliver enough heat. Below this limit, the heat pump can resume during the peak. The limit is used only if you select a water temperature sensor above.",
+              "hold_during_peak": "Enable this to let the selected thermostat heat at a temporarily lower target when a room reaches its comfort limit during the peak. This helps prevent further cooling. Requires a buffer tank, a selected thermostat and an allowed drop greater than 0.1 °C.",
+              "floor_pump": "Optional. Select the on/off state of the floor heating circuit’s own pump. While it runs, the shared pump after the tank keeps running too. Leave empty if the floor circuit has no separate pump.",
+              "pump_start": "Optional. Select the switch or start button for the pump that sends water from the tank to your rooms. Leave empty if another controller runs it. A switch does not need separate stop or feedback entities.",
+              "pump_stop": "Select the separate stop button if you selected a start button above. Leave empty if your pump uses a switch that can turn on and off.",
+              "pump_feedback": "For button control, select a sensor or state that tells Home Assistant whether the pump is actually running, such as an on/off signal or a speed sensor. Feedback is required with separate start and stop buttons.",
+              "pump_overrun": "Minutes the shared pump after the tank keeps running after the last zone stops calling for heat. Enter 0 to stop immediately. Applies only if HouseHeating runs that pump."
             }
           },
           "economics": {
@@ -227,12 +227,14 @@
             "data": {
               "minimum_spread": "Minimum tariff difference per kWh",
               "extra_energy": "Estimated extra energy (%)",
-              "power_entity": "Heat pump electric power (W or kW)"
+              "power_entity": "Heat pump electric power (W or kW)",
+              "execution_entity": "Signal that your automation is following the plan"
             },
             "data_description": {
-              "minimum_spread": "Minimum difference between the cheap and expensive periods, in euros per kWh. 0.05 means 5 cents per kWh.",
-              "extra_energy": "Estimate extra electricity for preheating. The planner deducts this cost when deciding whether shifting is worthwhile.",
-              "power_entity": "Optional. Select the heat pump electrical power sensor in W or kW to estimate savings in euros."
+              "minimum_spread": "Smallest difference between the cheap and expensive tariffs that the planner will consider, in euros per kWh. Enter 0.05 for five cents. The planner then also accounts for the extra electricity needed for preheating.",
+              "extra_energy": "Start with 10% if you have no measurements. The planner then budgets 1.10 kWh at the cheap tariff for every 1 kWh shifted out of the expensive block. Consider 0–5% if water and room temperatures barely rise, or 15–20% if you preheat well above your normal settings. Use the Estimated extra electricity from preheating sensor’s recommendation once it has enough data. This allowance applies only to preheating.",
+              "power_entity": "Optional. Select the live electrical power of just your heat pump in W or kW. Do not use an accumulated kWh sensor or a whole-home meter. If left empty, the integration tries the heat pump’s Modbus power reading.",
+              "execution_entity": "Optional in advice-only mode. Select an on/off signal that your automation turns on during both the cheap and expensive blocks when it actually follows the displayed plan. Switch it off afterwards. Leave empty if you only view advice so it can collect baseline readings."
             }
           }
         }
@@ -298,6 +300,9 @@
     }
   },
   "device": {
+    "price_control": {
+      "name": "Dynamic price control"
+    },
     "register_diagnostics": {
       "name": "Diagnostics"
     },
@@ -926,6 +931,47 @@
           "standby": "Standby"
         }
       },
+      "price_charge_start": {
+        "name": "Cheap price block start"
+      },
+      "price_charge_end": {
+        "name": "Cheap price block end"
+      },
+      "price_pause_start": {
+        "name": "Expensive price block start"
+      },
+      "price_pause_end": {
+        "name": "Expensive price block end"
+      },
+      "price_charge_tariff": {
+        "name": "Cheap block tariff"
+      },
+      "price_pause_tariff": {
+        "name": "Expensive block tariff"
+      },
+      "price_saving_per_kwh": {
+        "name": "Price difference per kWh"
+      },
+      "price_observed_extra_energy": {
+        "name": "Estimated extra electricity from preheating",
+        "state_attributes": {
+          "observed_percentage": {
+            "name": "Estimated percentage before limits"
+          },
+          "sample_count": {
+            "name": "Number of usable completed plans"
+          },
+          "shifted_kwh": {
+            "name": "Estimated electricity shifted (kWh)"
+          },
+          "extra_kwh": {
+            "name": "Estimated extra electricity (kWh)"
+          }
+        }
+      },
+      "price_estimated_saving": {
+        "name": "Estimated saving per plan"
+      },
       "price_plan": {
         "name": "Dynamic price control",
         "state": {
@@ -1092,6 +1138,12 @@
       },
       "sterilization": {
         "name": "Sterilization active"
+      },
+      "price_charge_active": {
+        "name": "Cheap price block active"
+      },
+      "price_pause_active": {
+        "name": "Expensive price block active"
       },
       "control_enabled": {
         "name": "Modbus control authorized"

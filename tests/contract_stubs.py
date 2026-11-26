@@ -195,6 +195,8 @@ def install(monkeypatch):
                             "power",
                             "energy",
                             "enum",
+                            "timestamp",
+                            "monetary",
                             "volume_flow_rate",
                         )
                     },

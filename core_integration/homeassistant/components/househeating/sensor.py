@@ -2,6 +2,7 @@
 
 from dataclasses import asdict
 from datetime import UTC, datetime
+from operator import attrgetter
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.helpers.entity import EntityCategory
@@ -25,7 +26,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
             MonitoringSensor(coordinator, key, *description) for key, description in MONITORING_SENSORS.items()
         )
     if coordinator.price_control is not None:
-        async_add_entities([PricePlanSensor(coordinator, "price_plan")])
+        async_add_entities(
+            [
+                PricePlanSensor(coordinator, "price_plan"),
+                PriceObservedEnergySensor(coordinator, "price_observed_extra_energy"),
+                *(PriceDetailSensor(coordinator, key, *description) for key, description in PRICE_DETAILS.items()),
+            ]
+        )
     if coordinator.operation is not None:
         keys = list(OPERATION_SENSORS)[:5] if coordinator.operation.statistics else []
         if coordinator.operation.config.enabled:
@@ -59,6 +66,66 @@ class PricePlanSensor(HouseHeatingEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         return self.coordinator.price_control.attributes()
+
+
+PRICE_DETAILS = {
+    "price_charge_start": (attrgetter("charge.start"), SensorDeviceClass.TIMESTAMP, None),
+    "price_charge_end": (attrgetter("charge.end"), SensorDeviceClass.TIMESTAMP, None),
+    "price_pause_start": (attrgetter("pause.start"), SensorDeviceClass.TIMESTAMP, None),
+    "price_pause_end": (attrgetter("pause.end"), SensorDeviceClass.TIMESTAMP, None),
+    "price_charge_tariff": (attrgetter("charge.price"), None, "EUR/kWh"),
+    "price_pause_tariff": (attrgetter("pause.price"), None, "EUR/kWh"),
+    "price_saving_per_kwh": (attrgetter("saving_per_kwh"), None, "EUR/kWh"),
+    "price_estimated_saving": (
+        lambda plan: None if plan.energy_kwh is None else round(plan.energy_kwh * plan.saving_per_kwh, 4),
+        SensorDeviceClass.MONETARY,
+        "EUR",
+    ),
+}
+
+
+class PriceDetailSensor(HouseHeatingEntity, SensorEntity):
+    def __init__(self, coordinator, key, read_value, device_class, unit):
+        super().__init__(coordinator, key)
+        self.read_value = read_value
+        self._attr_device_class = device_class
+        self._attr_native_unit_of_measurement = unit
+        if unit:
+            self._attr_suggested_display_precision = 4 if unit == "EUR/kWh" else 2
+
+    @property
+    def available(self):
+        return self.coordinator.price_control.price_checked_at is not None
+
+    @property
+    def native_value(self):
+        if (plan := self.coordinator.price_control.visible_plan) is None:
+            return None
+        value = self.read_value(plan)
+        if self.device_class == SensorDeviceClass.TIMESTAMP:
+            return datetime.fromtimestamp(value, UTC)
+        return value
+
+
+class PriceObservedEnergySensor(HouseHeatingEntity, SensorEntity):
+    _attr_native_unit_of_measurement = "%"
+    _attr_suggested_display_precision = 1
+
+    @property
+    def available(self):
+        return True
+
+    @property
+    def native_value(self):
+        return self.coordinator.price_control.learning_estimate()["percentage"]
+
+    @property
+    def extra_state_attributes(self):
+        return {
+            key: value
+            for key, value in self.coordinator.price_control.learning_estimate().items()
+            if key != "percentage"
+        }
 
 
 class CatalogSensor(CatalogEntity, SensorEntity):

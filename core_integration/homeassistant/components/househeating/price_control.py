@@ -11,7 +11,9 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.storage import Store
+from homeassistant.util import dt as dt_util
 
+from .price_learning import RETENTION, PriceEnergyLearning
 from .price_options import is_zonneplan_tariff
 from .price_plan import PricePlan, Tariff, choose_plan, read_tariffs
 
@@ -36,6 +38,9 @@ class PriceManager:
         self.store = Store(hass, 1, f"househeating.price_control.{coordinator.entry.entry_id}")
         self.saved = {}
         self.plan = None
+        self.recovery_plan = None
+        self.price_checked_at = None
+        self.visible_plan = None
         self.status = "waiting"
         self.lock = asyncio.Lock()
         self.cancel = None
@@ -45,31 +50,46 @@ class PriceManager:
         self.pump_retry_at = 0
         self.next_history_sample = 0
         self.next_plan_at = 0
+        self.learning = PriceEnergyLearning()
 
     async def load(self):
         try:
             self.saved = await self.store.async_load() or {}
             if not isinstance(self.saved, dict):
                 raise ValueError("Invalid price control storage")
-            if (spec := self.saved.get("plan")) and spec["pause"]["end"] > time():
-                self.plan = PricePlan(
-                    Tariff(**spec["charge"]),
-                    Tariff(**spec["pause"]),
-                    spec["saving_per_kwh"],
-                    spec["energy_kwh"],
-                    spec.get("defer", False),
-                )
+            now = time()
+            if spec := self.saved.get("plan"):
+                restored = self.restore_plan(spec)
+                if now < restored.pause.end:
+                    self.plan = restored
+                elif restored.defer and now < restored.charge.end:
+                    self.recovery_plan = restored
+            if spec := self.saved.get("recovery_plan"):
+                restored = self.restore_plan(spec)
+                if restored.defer and restored.pause.end <= now < restored.charge.end:
+                    self.recovery_plan = restored
             if self.automatic and self.saved.get("authorization") != self.config["authorization"]:
                 self.saved.pop("manual", None)
                 self.saved.pop("pending", None)
                 self.saved.pop("expected_power", None)
                 self.saved.pop("water_restore_pending", None)
-                self.plan = None
+                self.plan = self.recovery_plan = None
                 self.saved["plan"] = None
+                self.saved.pop("recovery_plan", None)
                 self.saved["authorization"] = self.config["authorization"]
                 await self.save()
         except (HomeAssistantError, TypeError, ValueError, KeyError):
             self.saved = {"blocked": True}
+
+    @staticmethod
+    def restore_plan(spec):
+        return PricePlan(
+            Tariff(**spec["charge"]),
+            Tariff(**spec["pause"]),
+            spec["saving_per_kwh"],
+            spec["energy_kwh"],
+            spec.get("defer", False),
+        )
 
     async def save(self):
         await self.store.async_save(dict(self.saved))
@@ -166,19 +186,89 @@ class PriceManager:
             value -= 273.15
         return value is not None and value >= self.config["buffer_min"]
 
+    def electrical_watts(self):
+        if self.config.get("power_entity"):
+            state = self.state(self.config["power_entity"])
+            if state is None:
+                return None
+            watts = number(state.state)
+            unit = state.attributes.get("unit_of_measurement")
+            if watts is None or watts < 0 or unit not in ("W", "kW"):
+                return None
+            return watts * 1000 if unit == "kW" else watts
+        device = self.coordinator.device
+        power = device.snapshot.value("input_power", device.config)
+        return None if power is None else power * 1000
+
     def observe_power(self, now):
-        state = self.state(self.config.get("power_entity"))
-        if state is None or now < self.next_history_sample:
+        if now < self.next_history_sample or (watts := self.electrical_watts()) is None:
             return
-        watts = number(state.state)
-        unit = state.attributes.get("unit_of_measurement")
-        if watts is None or watts < 0 or unit not in ("W", "kW"):
-            return
-        if unit == "kW":
-            watts *= 1000
         self.next_history_sample = now + 900
         history = self.saved.get("history", [])
         self.saved["history"] = [row for row in history if row[0] > now - 14 * 86400] + [[now, watts]]
+
+    @staticmethod
+    def learning_slot(stamp):
+        local = dt_util.as_local(datetime.fromtimestamp(stamp, UTC))
+        return local.hour * 4 + local.minute // 15
+
+    def observe_learning(self, now):
+        snapshot = self.coordinator.device.snapshot
+        device_config = self.coordinator.device.config
+        plan = self.visible_plan
+        outdoor = snapshot.value("outdoor_temperature", device_config)
+        valid = (
+            self.coordinator.last_update_success
+            and snapshot.raw.get(0x304) in HEATING_MODES
+            and 0 <= now - snapshot.timestamp <= max(60, 3 * self.coordinator.update_interval.total_seconds())
+        )
+        signal = self.state(self.config.get("execution_entity"))
+        external = not self.automatic and signal is not None and signal.state == "on"
+        if not self.automatic and self.config.get("execution_entity") and signal is None:
+            valid = False
+        room = self.saved.get("room")
+        room_state = self.state(room["entity"]) if room and room.get("purpose") == "preheat" else None
+        water = self.saved.get("water")
+        water_key = "floor_setpoint" if snapshot.raw.get(0x304) == 3 else "heating_setpoint"
+        preheated = (room_state is not None and number(room_state.attributes.get("temperature")) == room["target"]) or (
+            water is not None and snapshot.value(water_key, device_config) == water["target"]
+        )
+        data = self.saved.setdefault("preheat_learning", {})
+        strategy = [
+            self.config.get(key)
+            for key in ("power_entity", "execution_entity", "climate_entity", "preheat_offset", "water_boost")
+        ]
+        changed = data.get("strategy") != strategy
+        if changed:
+            data.clear()
+            data["strategy"] = strategy
+            self.learning = PriceEnergyLearning()
+        results = data.get("results", [])
+        expired = [row for row in results if row[0] < now - RETENTION]
+        if expired:
+            data["results"] = [row for row in results if row[0] >= now - RETENTION]
+            changed = True
+        return (
+            self.learning.observe(
+                data,
+                now,
+                plan,
+                watts=self.electrical_watts() if valid else None,
+                outdoor=outdoor,
+                automatic=self.automatic,
+                external=external,
+                preheated=self.automatic and preheated,
+                paused=self.automatic and bool(self.saved.get("paused")),
+                interrupted=self.automatic
+                and self.status
+                in ("manual_override", "command_unconfirmed", "control_unavailable", "pump_unavailable"),
+                local_slot=self.learning_slot,
+            )
+            or changed
+        )
+
+    def learning_estimate(self):
+        return self.learning.estimate(self.saved.get("preheat_learning", {}))
 
     def power_history(self):
         groups = {}
@@ -447,14 +537,19 @@ class PriceManager:
             if self.cancel is None:
                 return
             try:
-                await self.update(time())
+                now = time()
+                await self.update(now)
+                if self.observe_learning(time()):
+                    await self.save()
             except (HomeAssistantError, OSError, TimeoutError, ValueError, KeyError, TypeError):
+                self.price_checked_at = self.visible_plan = None
                 self.status = "control_unavailable"
                 _LOGGER.debug("Price control could not complete the update", exc_info=True)
             self.coordinator.async_update_listeners()
 
     async def update(self, now):
         if self.automatic and (self.saved.get("blocked") or self.saved.get("pending")):
+            self.price_checked_at = self.visible_plan = None
             await self.restore_room()
             await self.adjust_water(restore=True)
             self.status = "command_unconfirmed"
@@ -462,8 +557,11 @@ class PriceManager:
         old_sample = self.next_history_sample
         self.observe_power(now)
         rows = self.forecast(now)
-        previous = self.plan
+        previous = (self.plan, self.recovery_plan)
+        if self.recovery_plan and now >= self.recovery_plan.charge.end:
+            self.recovery_plan = None
         if self.plan and self.plan.defer and self.plan.pause.end <= now < self.plan.charge.end:
+            self.recovery_plan = self.plan
             self.saved["recover_until"] = self.plan.charge.end
         if not rows or (self.plan and now >= self.plan.pause.end):
             self.plan = None
@@ -483,8 +581,12 @@ class PriceManager:
                 self.config.get("allow_defer", False),
             )
             self.next_plan_at = now + 60
-        if previous != self.plan or old_sample != self.next_history_sample:
+        if previous != (self.plan, self.recovery_plan) or old_sample != self.next_history_sample:
             self.saved["plan"] = asdict(self.plan) if self.plan else None
+            if self.recovery_plan:
+                self.saved["recovery_plan"] = asdict(self.recovery_plan)
+            else:
+                self.saved.pop("recovery_plan", None)
             await self.save()
         phase = "normal" if rows else "price_unavailable"
         if self.plan:
@@ -498,6 +600,8 @@ class PriceManager:
             else:
                 phase = "scheduled"
         self.status = phase
+        self.price_checked_at = now if rows else None
+        self.visible_plan = (self.recovery_plan or self.plan) if rows else None
         if not self.automatic:
             return
 
@@ -574,6 +678,15 @@ class PriceManager:
             await self.power(True)
         elif actual == 1 and confirmed_idle and self.no_demand_since is not None and now - self.no_demand_since >= 900:
             await self.power(False)
+
+    def block_active(self, block):
+        now = self.price_checked_at
+        if now is None:
+            return None
+        if (plan := self.visible_plan) is None:
+            return False
+        tariff = getattr(plan, block)
+        return tariff.start <= now < tariff.end
 
     def attributes(self):
         if self.plan is None:

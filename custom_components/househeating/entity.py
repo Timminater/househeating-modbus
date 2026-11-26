@@ -68,6 +68,20 @@ SUBDEVICE_KEYS = {
     },
     "io": (RELAY_FLAGS.keys() - {"compressor_active"}) | INPUT_FLAGS.keys() | {"smart_grid_raw"},
     "register_diagnostics": set(),
+    "price_control": {
+        "price_plan",
+        "price_charge_active",
+        "price_pause_active",
+        "price_charge_start",
+        "price_charge_end",
+        "price_pause_start",
+        "price_pause_end",
+        "price_charge_tariff",
+        "price_pause_tariff",
+        "price_saving_per_kwh",
+        "price_estimated_saving",
+        "price_observed_extra_energy",
+    },
 }
 SUBDEVICE_BY_KEY = {key: group for group, keys in SUBDEVICE_KEYS.items() for key in keys}
 

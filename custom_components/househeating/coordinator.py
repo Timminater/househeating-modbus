@@ -38,7 +38,7 @@ class HouseHeatingCoordinator(DataUpdateCoordinator[Snapshot]):
             kwargs = {"force_optional": self.force_optional}
             if addresses := {context for context in self.async_contexts() if isinstance(context, int)}:
                 kwargs["catalog_addresses"] = addresses
-            if self.monitoring is not None:
+            if self.monitoring is not None or self.price_control is not None:
                 kwargs["telemetry_enabled"] = True
             if self.operation is not None and self.operation.statistics:
                 kwargs["diagnostics_enabled"] = True

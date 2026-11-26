@@ -11,6 +11,8 @@ from .entity import CatalogEntity, HouseHeatingEntity
 
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = entry.runtime_data
+    if coordinator.price_control is not None:
+        async_add_entities(PriceBlockBinary(coordinator, block) for block in ("charge", "pause"))
     async_add_entities(
         CatalogBinarySensor(coordinator, register)
         for register in coordinator.catalog_registers.values()
@@ -30,6 +32,20 @@ async def async_setup_entry(hass, entry, async_add_entities):
         for address, bits in FAULT_LABELS.items()
         for bit, label in bits.items()
     )
+
+
+class PriceBlockBinary(HouseHeatingEntity, BinarySensorEntity):
+    def __init__(self, coordinator, block):
+        super().__init__(coordinator, f"price_{block}_active")
+        self.block = block
+
+    @property
+    def available(self):
+        return self.coordinator.price_control.price_checked_at is not None
+
+    @property
+    def is_on(self):
+        return self.coordinator.price_control.block_active(self.block)
 
 
 class CatalogBinarySensor(CatalogEntity, BinarySensorEntity):

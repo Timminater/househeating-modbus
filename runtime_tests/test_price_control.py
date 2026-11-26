@@ -8,12 +8,16 @@ from zoneinfo import ZoneInfo
 
 import probatio
 import pytest
+from homeassistant.config_entries import ConfigEntries
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from test_monitoring import MemoryStore, options_flow
 from test_real_runtime import harness
 
+from custom_components.househeating import binary_sensor, sensor
 from custom_components.househeating.price_control import PriceManager
+from custom_components.househeating.price_learning import PriceEnergyLearning
 from custom_components.househeating.price_options import DEFAULTS
 from custom_components.househeating.price_plan import PricePlan, Tariff, choose_plan, read_tariffs
 
@@ -129,6 +133,85 @@ async def runtime(tmp_path, **config):
     manager.idle_since = now - 100
     manager.call = AsyncMock()
     return manager, unit
+
+
+@pytest.mark.asyncio
+async def test_advice_entities_track_price_blocks_and_recovery(tmp_path, monkeypatch):
+    manager, unit = await runtime(tmp_path, mode="advice")
+    coordinator = manager.coordinator
+    coordinator.entry.runtime_data = coordinator
+    manager.hass.config_entries = ConfigEntries(manager.hass, {})
+    monkeypatch.setattr(
+        manager.hass.config_entries,
+        "async_get_entry",
+        lambda entry_id: coordinator.entry if entry_id == coordinator.entry.entry_id else None,
+    )
+    entities = {}
+
+    def collect(new_entities):
+        entities.update((entity.key, entity) for entity in new_entities)
+
+    for platform in (sensor, binary_sensor):
+        await platform.async_setup_entry(manager.hass, coordinator.entry, collect)
+    assert "price_charge_active" not in entities
+    coordinator.price_control = manager
+    for platform in (sensor, binary_sensor):
+        await platform.async_setup_entry(manager.hass, coordinator.entry, collect)
+
+    assert {key for key in entities if key.startswith("price_")} == {
+        "price_plan",
+        "price_observed_extra_energy",
+        *sensor.PRICE_DETAILS,
+        "price_charge_active",
+        "price_pause_active",
+    }
+    summary = entities["price_plan"]
+    assert summary.unique_id == f"{coordinator.entry.entry_id}_price_plan"
+    cheap = entities["price_charge_active"]
+    expensive = entities["price_pause_active"]
+    for key, entity in entities.items():
+        if key.startswith("price_"):
+            assert entity.device_info["identifiers"] == {
+                ("househeating", f"{coordinator.entry.entry_id}_price_control")
+            }
+    assert not cheap.available and not expensive.available
+
+    now = time()
+    manager.plan = PricePlan(Tariff(now + 60, now + 120, 0.20), Tariff(now - 60, now + 60, 0.40), 0.18, 2.0, True)
+    await manager.update(now)
+    assert cheap.available and cheap.is_on is False
+    assert expensive.is_on is True
+    assert entities["price_charge_start"].native_value == datetime.fromtimestamp(now + 60, UTC)
+    assert entities["price_charge_tariff"].native_value == 0.20
+    assert entities["price_pause_tariff"].native_value == 0.40
+    assert entities["price_saving_per_kwh"].native_value == 0.18
+    assert entities["price_estimated_saving"].native_value == 0.36
+    assert summary.extra_state_attributes["estimated_saving_at_import_tariff"] == 0.36
+
+    await manager.update(now + 60)
+    assert cheap.is_on is True and expensive.is_on is False
+    assert summary.extra_state_attributes == {}
+
+    restored = PriceManager(manager.hass, coordinator)
+    restored.store = manager.store
+    with monkeypatch.context() as clock:
+        clock.setattr("custom_components.househeating.price_control.time", lambda: now + 60)
+        await restored.load()
+    coordinator.price_control = restored
+    assert not cheap.available and restored.plan is None
+    await restored.update(now + 60)
+    assert cheap.is_on is True and expensive.is_on is False
+
+    await restored.update(now + 120)
+    assert cheap.is_on is False and expensive.is_on is False
+    assert entities["price_estimated_saving"].native_value is None
+    restored.hass.states.async_set(TARIFF, "unavailable")
+    await restored.update(now + 121)
+    assert not expensive.available and expensive.is_on is None
+    assert not entities["price_charge_start"].available
+    assert entities["price_charge_tariff"].native_value is None
+    manager.call.assert_not_awaited()
+    assert not unit.writes
 
 
 @pytest.mark.asyncio
@@ -337,3 +420,104 @@ async def test_form_previews_and_saves_source(tmp_path, monkeypatch):
     assert result["data"]["price_control"]["mode"] == "advice"
     assert result["data"]["price_control"]["preheat_offset"] == 0.5
     assert "forecast_attribute" not in result["data"]["price_control"]
+
+
+@pytest.mark.asyncio
+async def test_reopening_price_form_prefills_sections_and_allows_clearing(tmp_path, monkeypatch):
+    flow, entry = await options_flow(tmp_path, monkeypatch)
+    assert register_tariff(flow.hass) == TARIFF
+    start = datetime.now(UTC) - timedelta(minutes=5)
+    flow.hass.states.async_set(TARIFF, "0.4", {"forecast": forecast(start, [0.4, 0.5])})
+    settings = {
+        "mode": "advice",
+        "price_entity": TARIFF,
+        "buffer": True,
+        "climate_entity": ROOM,
+        "preheat_offset": 0.6,
+        "water_boost": 0,
+        "allow_defer": True,
+        "buffer_entity": "sensor.tank_water",
+        "buffer_min": 34,
+        "extra_energy": 18,
+        "power_entity": "sensor.heat_pump_watts",
+        "execution_entity": "input_boolean.price_plan_executed",
+    }
+    object.__setattr__(entry, "options", MappingProxyType({**entry.options, "price_control": settings}))
+    form = await flow.async_step_price_control({"mode": "advice", "price_entity": TARIFF, "buffer": True})
+    schema = form["data_schema"]
+    groups = {group["name"]: group for group in probatio.to_field_list(schema, custom_serializer=cv.custom_serializer)}
+    for name, fields in {
+        "comfort": ("climate_entity", "preheat_offset", "water_boost", "allow_defer"),
+        "hydraulics": ("buffer_entity", "buffer_min"),
+        "economics": ("extra_energy", "power_entity", "execution_entity"),
+    }.items():
+        group = groups[name]
+        # HA treats a section-level default as the entire value and skips its children.
+        assert "default" not in group
+        children = {child["name"]: child for child in group["schema"]}
+        for key in fields:
+            assert children[key]["description"]["suggested_value"] == settings[key]
+
+    preview = await flow.async_step_price_settings(schema({"economics": {"extra_energy": 18}}))
+    assert preview["step_id"] == "price_confirm"
+    result = await flow.async_step_price_confirm({"confirm": True})
+    saved = result["data"]["price_control"]
+    assert saved["climate_entity"] == ROOM
+    assert saved["buffer_entity"] == "sensor.tank_water"
+    assert saved["extra_energy"] == 18
+    assert "power_entity" not in saved and "execution_entity" not in saved
+
+
+def test_learns_from_confirmed_price_windows_with_matching_reference():
+    learning = PriceEnergyLearning()
+    data = {}
+    first = 10 * 86400
+    duration = 4 * 3600
+
+    def local_slot(stamp):
+        return stamp % 86400
+
+    def observe(start, *, plan=None, automatic=False, external=False, gap=False, interrupted=False):
+        for minute in range(0, duration // 60 + 1):
+            now = start + minute * 60
+            preheat = minute < 60
+            peak = 60 <= minute < 120
+            changed = plan is not None and (automatic or external)
+            power = 2200 if changed and preheat else 0 if changed and peak else 1000
+            learning.observe(
+                data,
+                now,
+                plan,
+                watts=None if gap and minute == 80 else power,
+                outdoor=5,
+                automatic=automatic,
+                external=external and (preheat or peak),
+                preheated=automatic and preheat,
+                paused=automatic and peak,
+                interrupted=interrupted and minute == 80,
+                local_slot=local_slot,
+            )
+
+    for day in range(4):
+        observe(first + day * 86400)
+    for day, kind in enumerate(("advice", "auto", "manual", "gap", "interrupted", "auto"), start=4):
+        start = first + day * 86400
+        plan = PricePlan(Tariff(start, start + 3600, 0.20), Tariff(start + 3600, start + 7200, 0.40), 0.18, 1)
+        observe(
+            start,
+            plan=plan,
+            automatic=kind in ("auto", "gap", "interrupted"),
+            external=kind == "manual",
+            gap=kind == "gap",
+            interrupted=kind == "interrupted",
+        )
+        if day == 6:
+            assert learning.estimate(data)["percentage"] is None
+
+    assert learning.estimate(data) == {
+        "percentage": 20.0,
+        "observed_percentage": 20.0,
+        "sample_count": 3,
+        "shifted_kwh": 3.0,
+        "extra_kwh": 0.6,
+    }

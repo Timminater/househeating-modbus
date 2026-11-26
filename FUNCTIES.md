@@ -123,6 +123,30 @@ warmtepomp over voordat je automatisch bedrijf inschakelt.
   na de piek kiezen. De comfortgrens en maximale overbrugging gelden ook
   dan. Tijdens het goedkopere blok volgt de warmtepomp de normale warmtevraag.
 
+Op het subapparaat **Dynamische prijssturing** staan de adviesfase,
+actieve prijsblokken, bloktijden, tarieven, het prijsverschil en de
+geschatte besparing per plan als afzonderlijke entiteiten. Ze zijn ook
+beschikbaar in **Alleen advies**. Gebruik bijvoorbeeld **Duur prijsblok
+actief** als trigger en controleer de adviesfase als voorwaarde. Een actief
+prijsblok zegt wanneer het tarief geldt. De adviesfase houdt ook rekening
+met onder meer comfort en buffertemperatuur. Home Assistant verzamelt de
+historie vanaf het moment waarop de entiteiten beschikbaar komen.
+
+**Geschat extra stroomverbruik door voorverwarmen** adviseert een percentage
+voor **Geschat extra stroomverbruik (%)**. Die instelling pas je zelf aan.
+De sensor vergelijkt complete kwartieren met eerdere kwartieren op hetzelfde
+lokale tijdstip en bij een buitentemperatuur binnen 2 °C. De schatting telt
+het herstel tot twee uur na het dure blok mee. Ze verschijnt na minimaal drie
+bruikbare voorverwarmplannen in de afgelopen 28 dagen. De attributen tonen
+het aantal plannen, het geschatte extra verbruik en de verschoven kWh.
+
+**Alleen advies** bouwt alvast een referentie op. Als je eigen automatisering
+het plan uitvoert, kies dan bij **Besparing berekenen** een aan-uitsignaal waarmee
+ze de uitvoering aangeeft tijdens het goedkope en dure blok. In **Automatisch**
+tellen alleen plannen mee waarbij HouseHeating voorverwarming en een prijspauze
+heeft waargenomen. Ontbrekende metingen en te weinig verschoven kWh leveren geen
+bruikbaar plan op.
+
 Tijdens een prijspauze wacht de regeling op de compressorstop. Ontdooien,
 comfortverlies, een te koud vat en ontbrekende prijsgegevens hebben voorrang.
 Met **Temperatuur vasthouden na prijsuitstel** kan een geselecteerde

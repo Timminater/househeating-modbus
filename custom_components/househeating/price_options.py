@@ -36,6 +36,7 @@ ENTITIES = {
     "pump_stop": ["button"],
     "pump_feedback": ["switch", "sensor", "binary_sensor"],
     "power_entity": ["sensor"],
+    "execution_entity": ["binary_sensor", "input_boolean", "switch"],
 }
 GROUPS = {
     "comfort": ("comfort_entities", "climate_entity", "preheat_offset", "comfort_margin", "water_boost", "allow_defer"),
@@ -50,7 +51,7 @@ GROUPS = {
         "pump_feedback",
         "pump_overrun",
     ),
-    "economics": ("minimum_spread", "extra_energy", "power_entity"),
+    "economics": ("minimum_spread", "extra_energy", "power_entity", "execution_entity"),
 }
 TARIFF_SUFFIXES = ("_current_electricity_tariff", "_current_quarter_hourly_electricity_tariff")
 
@@ -129,7 +130,11 @@ async def price_settings(flow, user_input):
     options = flow.config_entry.options
     automatic = defaults["mode"] == "automatic"
     groups = {
-        group: tuple(key for key in keys if automatic or key not in PUMP_FIELDS)
+        group: tuple(
+            key
+            for key in keys
+            if (automatic or key not in PUMP_FIELDS) and (not automatic or key != "execution_entity")
+        )
         for group, keys in GROUPS.items()
         if (group != "heating" or automatic) and (group != "hydraulics" or defaults["buffer"])
     }
@@ -137,7 +142,9 @@ async def price_settings(flow, user_input):
     if user_input is not None:
         config = dict(defaults)
         for group, keys in groups.items():
-            submitted = user_input.get(group, {})
+            if group not in user_input:
+                continue
+            submitted = user_input[group]
             for key in keys:
                 if key in submitted:
                     config[key] = submitted[key]
@@ -195,20 +202,21 @@ async def price_settings(flow, user_input):
                 return await price_options(flow, {key: config[key] for key in BASIC if key in config})
             flow._price_candidate = config
             return await price_confirm(flow, None)
-    fields = schema_fields(flow, defaults)
+    fields = schema_fields(flow, defaults, nested=True)
     form = {}
     for group, keys in groups.items():
-        form[vol.Optional(group, default=dict)] = section(
+        form[vol.Optional(group)] = section(
             vol.Schema(dict(fields[key] for key in keys)),
             {"collapsed": group != "heating" and not any(key in errors for key in keys) and "base" not in errors},
         )
     return flow.async_show_form(step_id="price_settings", data_schema=vol.Schema(form), errors=errors)
 
 
-def schema_fields(flow, defaults):
+def schema_fields(flow, defaults, *, nested=False):
     schema = {}
     for key, value in DEFAULTS.items():
-        marker = vol.Required(key, default=defaults.get(key, value))
+        initial = defaults.get(key, value)
+        marker = vol.Required(key, default=initial, description={"suggested_value": initial} if nested else None)
         if key == "mode":
             schema[marker] = SelectSelector(
                 SelectSelectorConfig(options=["off", "advice", "automatic"], translation_key="price_mode")
@@ -221,7 +229,11 @@ def schema_fields(flow, defaults):
         else:
             schema[marker] = type(value)
     for key, domains in ENTITIES.items():
-        marker = vol.Optional(key, default=defaults[key]) if defaults.get(key) else vol.Optional(key)
+        initial = defaults.get(key)
+        if nested:
+            marker = vol.Optional(key, description={"suggested_value": initial} if initial else None)
+        else:
+            marker = vol.Optional(key, default=initial) if initial else vol.Optional(key)
         if key == "price_entity":
             registry = er.async_get(flow.hass)
             candidates = [

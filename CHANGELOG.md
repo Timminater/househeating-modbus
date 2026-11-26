@@ -1,5 +1,11 @@
 # Wijzigingen
 
+## 0.12.3 — 26 november 2026
+
+- Groepeert de adviesfase, prijsblokken, tijden, tarieven en berekende besparing in het subapparaat **Dynamische prijssturing**, ook in **Alleen advies**.
+- Adviseert een percentage voor extra stroomverbruik na voldoende gemeten en uitgevoerde voorverwarmplannen.
+- Toont opgeslagen waarden op de tweede instellingenpagina en verduidelijkt de veldteksten.
+
 ## 0.12.2 — 26 november 2026
 
 - Laat beheerders gedocumenteerde schrijfbare registers en spoelen vanuit de registerbrowser wijzigen, zonder entiteit.
