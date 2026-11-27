@@ -521,3 +521,39 @@ def test_learns_from_confirmed_price_windows_with_matching_reference():
         "shifted_kwh": 3.0,
         "extra_kwh": 0.6,
     }
+
+
+@pytest.mark.asyncio
+async def test_automatic_price_setup_validates_handover_and_saves(tmp_path, monkeypatch):
+    flow, entry = await options_flow(tmp_path, monkeypatch)
+    assert register_tariff(flow.hass) == TARIFF
+    start = datetime.now(UTC) - timedelta(minutes=5)
+    flow.hass.states.async_set(TARIFF, "0.4", {"forecast": forecast(start, [0.4, 0.5])})
+    form = await flow.async_step_price_control({"mode": "automatic", "price_entity": TARIFF, "buffer": True})
+    schema = form["data_schema"]
+    settings = {
+        "comfort": {"comfort_entities": [ROOM], "climate_entity": ROOM, "water_boost": 4},
+        "hydraulics": {"hold_during_peak": True, "pump_start": "switch.circulation"},
+        "heating": {"confirm_control": True},
+    }
+
+    failed = await flow.async_step_price_settings(schema(settings))
+    assert failed["errors"] == {"heating": "price_demand_required"}
+    heating = next(value.schema for key, value in failed["data_schema"].schema.items() if key.schema == "heating")
+    assert heating({})["confirm_control"] is True
+
+    settings["heating"] = {"demand_entities": [DEMAND], "confirm_control": False}
+    failed = await flow.async_step_price_settings(schema(settings))
+    assert failed["errors"] == {"heating": "price_handover_required"}
+    settings["heating"]["confirm_control"] = True
+
+    preview = await flow.async_step_price_settings(schema(settings))
+    assert preview["step_id"] == "price_confirm"
+    assert (await flow.async_step_price_confirm({"confirm": False}))["step_id"] == "price_confirm"
+    outcome = await flow.async_step_price_confirm({"confirm": True})
+    saved = outcome["data"]["price_control"]
+    assert saved["mode"] == "automatic"
+    assert saved["water_boost"] == 4
+    assert saved["demand_entities"] == [DEMAND]
+    assert saved["authorization"] and "confirm_control" not in saved
+    assert entry.options.get("price_control") is None

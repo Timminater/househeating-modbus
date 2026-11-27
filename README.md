@@ -14,6 +14,7 @@ energiemonitoring en optionele sturing op buitentemperatuur, zonnestroom en dyna
 
 ## Releaseoverzicht
 
+- **v0.12.4** · Herstelt de bevestiging en verduidelijkt meldingen bij automatische prijssturing.
 - **v0.12.3** · Apart prijssturingsapparaat met historie en advies over meerverbruik, plus herstel van het instellingenformulier.
 - **v0.12.2** · Schrijft gedocumenteerde registers en spoelen vanuit de registerbrowser met terugleescontrole.
 - **v0.12.1** · Eenvoudiger prijsformulier met Zonneplan-keuze, contextafhankelijke velden en uitleg per instelling.

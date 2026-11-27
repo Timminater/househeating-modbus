@@ -1,5 +1,10 @@
 # Wijzigingen
 
+## 0.12.4 — 27 november 2026
+
+- Herstelt het opslaan van automatische prijssturing nadat de gebruiker de bediening heeft overgedragen.
+- Maakt duidelijk welke instellingen nog nodig zijn en toont fouten bij de betreffende groep.
+
 ## 0.12.3 — 26 november 2026
 
 - Groepeert de adviesfase, prijsblokken, tijden, tarieven en berekende besparing in het subapparaat **Dynamische prijssturing**, ook in **Alleen advies**.

@@ -96,7 +96,7 @@ async def price_options(flow, user_input):
             errors = {"price_entity": "invalid_price_forecast"}
             defaults = config
         else:
-            flow._price_basics = config
+            flow._price_basics = {key: value for key, value in config.items() if key != "confirm_control"}
             flow._price_preview = preview
             return await price_settings(flow, None)
     else:
@@ -154,10 +154,11 @@ async def price_settings(flow, user_input):
             config["hold_during_peak"] = False
         config = {key: value for key, value in config.items() if key in DEFAULTS or key in ENTITIES}
         defaults = config
+        confirm_control = user_input.get("heating", {}).get("confirm_control") is True
         if config["hold_during_peak"] and (
             not config["buffer"] or not config.get("climate_entity") or config["comfort_margin"] <= 0.1
         ):
-            errors["hold_during_peak"] = "price_hold_requirements"
+            errors["hydraulics"] = "price_hold_requirements"
         if config["mode"] == "automatic":
             if config["water_boost"] and (
                 options.get("weather_curve", {}).get("automatic")
@@ -165,15 +166,16 @@ async def price_settings(flow, user_input):
                 or len(options.get("authorized_identity", [])) != 4
                 or options["authorized_identity"][3] < 130
             ):
-                errors["water_boost"] = "price_water_requirements"
-            if (
-                not options.get("allow_control")
-                or len(options.get("authorized_identity", [])) != 4
-                or not config.get("demand_entities")
-                or not config.get("confirm_control")
-                or not (config.get("comfort_entities") or config.get("climate_entity"))
-            ):
-                errors["base"] = "price_control_requirements"
+                errors["comfort"] = "price_water_requirements"
+            demand_entities = config.get("demand_entities", ())
+            if not options.get("allow_control") or len(options.get("authorized_identity", [])) != 4:
+                errors["base"] = "price_control_locked"
+            if not demand_entities:
+                errors["heating"] = "price_demand_required"
+            elif not confirm_control:
+                errors["heating"] = "price_handover_required"
+            if not (config.get("comfort_entities") or config.get("climate_entity")):
+                errors.setdefault("comfort", "price_comfort_required")
             start = config.get("pump_start", "")
             if (
                 config["buffer"]
@@ -188,13 +190,13 @@ async def price_settings(flow, user_input):
                         )
                     )
                     or start == config.get("floor_pump")
-                    or start in config["demand_entities"]
+                    or start in demand_entities
                     or config.get("pump_feedback") == config.get("floor_pump")
                     and config.get("floor_pump")
-                    or config.get("pump_feedback") in config["demand_entities"]
+                    or config.get("pump_feedback") in demand_entities
                 )
             ):
-                errors["base"] = "price_pump_configuration"
+                errors.setdefault("hydraulics", "price_pump_configuration")
         if not errors:
             try:
                 flow._price_preview = price_preview(flow, config)
@@ -202,12 +204,13 @@ async def price_settings(flow, user_input):
                 return await price_options(flow, {key: config[key] for key in BASIC if key in config})
             flow._price_candidate = config
             return await price_confirm(flow, None)
+        defaults = {**config, "confirm_control": confirm_control}
     fields = schema_fields(flow, defaults, nested=True)
     form = {}
     for group, keys in groups.items():
         form[vol.Optional(group)] = section(
             vol.Schema(dict(fields[key] for key in keys)),
-            {"collapsed": group != "heating" and not any(key in errors for key in keys) and "base" not in errors},
+            {"collapsed": group != "heating" and group not in errors},
         )
     return flow.async_show_form(step_id="price_settings", data_schema=vol.Schema(form), errors=errors)
 
@@ -258,7 +261,7 @@ def schema_fields(flow, defaults, *, nested=False):
                 multiple=key in MULTIPLE,
             )
         )
-    schema[vol.Required("confirm_control", default=False)] = bool
+    schema[vol.Required("confirm_control", default=defaults.get("confirm_control", False) if nested else False)] = bool
     return {marker.schema: (marker, validator) for marker, validator in schema.items()}
 
 
