@@ -177,6 +177,8 @@
               "preheat_offset": "Room preheat increase (°C)",
               "comfort_margin": "Allowed room temperature drop (°C)",
               "water_boost": "Increase supply target in cheap periods (°C)",
+              "preheat_ratio": "Preheat duration relative to price pause",
+              "max_preheat_gap": "Maximum time between preheating and the pause (minutes)",
               "allow_defer": "Also allow heating to shift after the price peak"
             },
             "data_description": {
@@ -185,6 +187,8 @@
               "preheat_offset": "How much warmer may the room get before an expensive period? With 0.3 °C, a target of 20.5 °C becomes 20.8 °C. Applies only if you select a thermostat above. Enter 0 to skip extra room preheating.",
               "comfort_margin": "How far may a monitored room cool during an expensive block? With a normal target of 20.5 °C and a margin of 0.3 °C, heating can resume when the room reaches 20.2 °C. Choose a smaller margin if you prefer steadier temperatures.",
               "water_boost": "How many degrees to add to the supply water target when preheating cheaply. A target of 40 °C and a boost of 2 °C temporarily gives 42 °C. Enter 0 to leave the target as it is. Also enter 0 if you use HouseHeating’s automatic weather curve.",
+              "preheat_ratio": "By default, preheating lasts at least as long as the pause. Choose 50% for 1.5 hours of preheating before a 3-hour pause. Shorter options round up to an available quarter hour and use at least 30 minutes. Start with a short pause to see how much heat your floor or buffer tank retains.",
+              "max_preheat_gap": "Set 0 to make the pause begin immediately after preheating. Set 60 to allow the pause to start up to one hour later. Choose a shorter gap if your floor or buffer tank loses heat quickly.",
               "allow_defer": "Enable this to let the planner delay heating until a cheaper block immediately after the peak. Comfort limits still apply. Leave it off to consider preheating before the peak only."
             }
           },
@@ -293,6 +297,13 @@
         "floor_setpoint": "Floor heating",
         "dhw_setpoint": "Domestic hot water",
         "cooling_setpoint": "Cooling"
+      }
+    },
+    "price_preheat_ratio": {
+      "options": {
+        "100": "At least as long as the pause",
+        "75": "75% of the pause duration",
+        "50": "50% of the pause duration"
       }
     },
     "price_mode": {

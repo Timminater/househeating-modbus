@@ -177,6 +177,8 @@
               "preheat_offset": "Verhoging ruimtedoel (°C)",
               "comfort_margin": "Toegestane daling ruimtetemperatuur (°C)",
               "water_boost": "Verhoging aanvoerdoel tijdens goedkope uren (°C)",
+              "preheat_ratio": "Duur voorverwarmen ten opzichte van prijspauze",
+              "max_preheat_gap": "Maximale tijd tussen voorverwarmen en pauze (minuten)",
               "allow_defer": "Ook verwarming naar na de piek verschuiven"
             },
             "data_description": {
@@ -185,6 +187,8 @@
               "preheat_offset": "Hoeveel warmer mag de kamer worden vóór een dure periode? Met 0,3 °C wordt een kamertemperatuurdoel van 20,5 °C tijdelijk 20,8 °C. Alleen van toepassing als je hierboven een thermostaat kiest. Vul 0 in om de kamer niet extra voor te verwarmen.",
               "comfort_margin": "Hoeveel mag een bewaakte kamer afkoelen tijdens een duur blok? Met een normaal doel van 20,5 °C en een daling van 0,3 °C mag de kamer tot 20,2 °C afkoelen voordat weer warmte nodig is. Kies een kleinere waarde als je weinig verschil wilt voelen.",
               "water_boost": "Aantal graden dat het doel voor het aanvoerwater omhoog mag tijdens goedkoop voorverwarmen. Bij 40 °C en een verhoging van 2 °C wordt het doel tijdelijk 42 °C. Vul 0 in als je aanvoerdoel moet blijven zoals het is. Vul ook 0 in als je de automatische stooklijn van HouseHeating gebruikt.",
+              "preheat_ratio": "Standaard is voorverwarmen minstens even lang als pauzeren. Kies 50% voor bijvoorbeeld 1,5 uur voorverwarmen vóór 3 uur pauze. De kortere opties ronden af naar een beschikbaar kwartier en gebruiken minimaal 30 minuten. Begin met een korte pauze om te zien hoeveel warmte je vloer of buffervat vasthoudt.",
+              "max_preheat_gap": "Met 0 sluiten de blokken direct aan. Met 60 kan de pauze tot een uur na het voorverwarmen beginnen. Kies een korte tussentijd als je vloer of buffervat snel warmte verliest.",
               "allow_defer": "Vink aan als de planner de verwarming ook mag uitstellen tot een goedkoper blok direct na de piek. Comfortgrenzen blijven gelden. Laat uit als je alleen vóór de piek wilt voorverwarmen."
             }
           },
@@ -293,6 +297,13 @@
         "floor_setpoint": "Vloerverwarming",
         "dhw_setpoint": "Warmwater",
         "cooling_setpoint": "Koeling"
+      }
+    },
+    "price_preheat_ratio": {
+      "options": {
+        "100": "Minstens even lang als de pauze",
+        "75": "75% van de pauzeduur",
+        "50": "50% van de pauzeduur"
       }
     },
     "price_mode": {

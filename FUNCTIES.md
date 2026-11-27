@@ -113,6 +113,13 @@ warmtepomp over voordat je automatisch bedrijf inschakelt.
   op. Tot er voldoende metingen zijn geeft de plansensor de geschatte winst
   per verschoven kWh. De kostenschatting gebruikt netafnametarieven en houdt
   rekening met het ingestelde extra energieverbruik.
+- **Duur en aansluiting van voorverwarmen.** Kies onder **Comfort en
+  voorverwarmen** of het voorverwarmblok minstens even lang moet zijn als de
+  pauze, of 75% of 50% daarvan. Met 50% kan 90 minuten voorverwarmen vóór
+  3 uur pauze worden gepland. Het voorverwarmblok duurt minstens 30 minuten.
+  Stel de maximale tussentijd in op 0 tot 60 minuten. Bij 0 begint de pauze
+  direct aan het eind van het voorverwarmen. Comfort- en buffergrenzen
+  blijven bepalen of de pauze eerder moet eindigen.
 - **Extra laadwarmte.** Stel optioneel een hoger aanvoerdoel in voor het
   goedkope voorverwarmblok, met of zonder buffervat. De verhoging volgt de
   vrijgegeven temperatuurgrenzen. Automatisch verhogen vereist curve-uitlezing,

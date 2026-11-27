@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from math import isfinite
 
+QUARTER_HOUR = 900
+MAX_PREHEAT_GAP = 3600
+
 
 @dataclass(frozen=True)
 class Tariff:
@@ -52,7 +55,27 @@ def read_tariffs(attributes):
     return tuple(parsed)
 
 
-def choose_plan(rows, now, max_pause, minimum_spread, extra_energy, power_by_hour, allow_defer=False):
+def allows_preheat(cheap, pause, ratio, max_gap):
+    """Check the earlier block against the configured duration and maximum gap."""
+    if not 0 <= pause.start - cheap.end <= min(max_gap, MAX_PREHEAT_GAP):
+        return False
+    minimum = max(1800, (pause.end - pause.start) * ratio / 100)
+    duration = cheap.end - cheap.start
+    return duration >= minimum and (ratio == 100 or duration < minimum + QUARTER_HOUR)
+
+
+def choose_plan(
+    rows,
+    now,
+    max_pause,
+    minimum_spread,
+    extra_energy,
+    power_by_hour,
+    allow_defer=False,
+    *,
+    preheat_ratio=100,
+    max_preheat_gap=MAX_PREHEAT_GAP,
+):
     """Rank contiguous block pairs using the estimated net cost per shifted kWh."""
     horizon = now + 86400
     clipped = []
@@ -60,7 +83,7 @@ def choose_plan(rows, now, max_pause, minimum_spread, extra_energy, power_by_hou
         start = max(row.start, now)
         end = min(row.end, horizon)
         while start < end:
-            boundary = min(end, (int(start // 900) + 1) * 900)
+            boundary = min(end, (int(start // QUARTER_HOUR) + 1) * QUARTER_HOUR)
             clipped.append(Tariff(start, boundary, row.price))
             start = boundary
     rows = clipped
@@ -97,8 +120,8 @@ def choose_plan(rows, now, max_pause, minimum_spread, extra_energy, power_by_hou
             defer = allow_defer and cheap.start == pause.end
             if (
                 other_segment != segment
-                or (not defer and not 0 <= pause.start - cheap.end <= 21600)
-                or cheap.end - cheap.start < seconds
+                or (defer and cheap.end - cheap.start < seconds)
+                or (not defer and not allows_preheat(cheap, pause, preheat_ratio, max_preheat_gap))
                 or pause.price - cheap.price < minimum_spread
             ):
                 continue

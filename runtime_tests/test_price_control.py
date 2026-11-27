@@ -1,5 +1,6 @@
 """Tariff parsing and price control against the HA runtime and a simulated device."""
 
+from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from time import time
 from types import MappingProxyType
@@ -19,7 +20,7 @@ from custom_components.househeating import binary_sensor, sensor
 from custom_components.househeating.price_control import PriceManager
 from custom_components.househeating.price_learning import PriceEnergyLearning
 from custom_components.househeating.price_options import DEFAULTS
-from custom_components.househeating.price_plan import PricePlan, Tariff, choose_plan, read_tariffs
+from custom_components.househeating.price_plan import PricePlan, Tariff, allows_preheat, choose_plan, read_tariffs
 
 
 def forecast(start, prices, minutes=15):
@@ -43,6 +44,24 @@ def test_plan_uses_contiguous_intervals_and_limits_pause(hours):
     assert plan.pause.end - plan.pause.start == hours * 3600
     assert plan.charge.end <= plan.pause.start
     assert plan.saving_per_kwh == pytest.approx(0.23)
+
+
+def test_half_duration_can_preheat_for_90_minutes_before_three_hour_pause():
+    start = datetime(2026, 11, 27, 12, tzinfo=UTC)
+    rows = read_tariffs({"forecast": forecast(start, [0.20] * 6 + [0.50] * 12)})
+    default = choose_plan(rows, start.timestamp(), 10800, 0.05, 0.1, {})
+    assert default.pause.end - default.pause.start == 5400
+    plan = choose_plan(rows, start.timestamp(), 10800, 0.05, 0.1, {}, preheat_ratio=50, max_preheat_gap=0)
+    assert plan.charge.end - plan.charge.start == 5400
+    assert plan.charge.end == plan.pause.start
+    assert plan.pause.end - plan.pause.start == 10800
+
+
+def test_preheat_gap_never_exceeds_one_hour():
+    charge = Tariff(0, 5400, 0.20)
+    assert allows_preheat(charge, Tariff(9000, 19800, 0.50), 50, 3600)
+    assert not allows_preheat(charge, Tariff(9001, 19801, 0.50), 50, 21600)
+    assert not allows_preheat(charge, Tariff(6300, 17100, 0.50), 50, 0)
 
 
 def test_hourly_and_missing_intervals():
@@ -133,6 +152,20 @@ async def runtime(tmp_path, **config):
     manager.idle_since = now - 100
     manager.call = AsyncMock()
     return manager, unit
+
+
+@pytest.mark.asyncio
+async def test_reload_discards_price_plan_that_exceeds_new_preheat_gap(tmp_path):
+    manager, _ = await runtime(tmp_path, mode="advice")
+    now = time()
+    charge = Tariff(now + 3600, now + 7200, 0.20)
+    pause = Tariff(charge.end + 7200, charge.end + 10800, 0.50)
+    manager.store.saved = {"plan": asdict(PricePlan(charge, pause, 0.28, None))}
+    restored = PriceManager(manager.hass, manager.coordinator)
+    restored.store = manager.store
+    await restored.load()
+    assert restored.plan is None
+    assert restored.store.saved["plan"] is None
 
 
 @pytest.mark.asyncio
@@ -436,6 +469,8 @@ async def test_reopening_price_form_prefills_sections_and_allows_clearing(tmp_pa
         "preheat_offset": 0.6,
         "water_boost": 0,
         "allow_defer": True,
+        "preheat_ratio": "50",
+        "max_preheat_gap": "15",
         "buffer_entity": "sensor.tank_water",
         "buffer_min": 34,
         "extra_energy": 18,
@@ -447,7 +482,14 @@ async def test_reopening_price_form_prefills_sections_and_allows_clearing(tmp_pa
     schema = form["data_schema"]
     groups = {group["name"]: group for group in probatio.to_field_list(schema, custom_serializer=cv.custom_serializer)}
     for name, fields in {
-        "comfort": ("climate_entity", "preheat_offset", "water_boost", "allow_defer"),
+        "comfort": (
+            "climate_entity",
+            "preheat_offset",
+            "water_boost",
+            "allow_defer",
+            "preheat_ratio",
+            "max_preheat_gap",
+        ),
         "hydraulics": ("buffer_entity", "buffer_min"),
         "economics": ("extra_energy", "power_entity", "execution_entity"),
     }.items():
@@ -465,6 +507,7 @@ async def test_reopening_price_form_prefills_sections_and_allows_clearing(tmp_pa
     assert saved["climate_entity"] == ROOM
     assert saved["buffer_entity"] == "sensor.tank_water"
     assert saved["extra_energy"] == 18
+    assert saved["preheat_ratio"] == "50" and saved["max_preheat_gap"] == "15"
     assert "power_entity" not in saved and "execution_entity" not in saved
 
 

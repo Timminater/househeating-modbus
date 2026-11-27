@@ -14,6 +14,7 @@ energiemonitoring en optionele sturing op buitentemperatuur, zonnestroom en dyna
 
 ## Releaseoverzicht
 
+- **v0.12.5** · Instelbare voorverwarmduur en maximaal één uur tussen voorverwarmen en prijspauze.
 - **v0.12.4** · Herstelt de bevestiging en verduidelijkt meldingen bij automatische prijssturing.
 - **v0.12.3** · Apart prijssturingsapparaat met historie en advies over meerverbruik, plus herstel van het instellingenformulier.
 - **v0.12.2** · Schrijft gedocumenteerde registers en spoelen vanuit de registerbrowser met terugleescontrole.

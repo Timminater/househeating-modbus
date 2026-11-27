@@ -19,6 +19,8 @@ DEFAULTS = {
     "water_boost": 0.0,
     "buffer_min": 30.0,
     "preheat_offset": 0.3,
+    "preheat_ratio": "100",
+    "max_preheat_gap": "60",
     "comfort_margin": 0.2,
     "max_hours": "1",
     "pump_overrun": 10,
@@ -39,7 +41,16 @@ ENTITIES = {
     "execution_entity": ["binary_sensor", "input_boolean", "switch"],
 }
 GROUPS = {
-    "comfort": ("comfort_entities", "climate_entity", "preheat_offset", "comfort_margin", "water_boost", "allow_defer"),
+    "comfort": (
+        "comfort_entities",
+        "climate_entity",
+        "preheat_offset",
+        "comfort_margin",
+        "water_boost",
+        "preheat_ratio",
+        "max_preheat_gap",
+        "allow_defer",
+    ),
     "heating": ("demand_entities", "confirm_control"),
     "hydraulics": (
         "buffer_entity",
@@ -226,6 +237,12 @@ def schema_fields(flow, defaults, *, nested=False):
             )
         elif key == "max_hours":
             schema[marker] = SelectSelector(SelectSelectorConfig(options=["0.5", "1", "1.5", "2", "2.5", "3"]))
+        elif key == "preheat_ratio":
+            schema[marker] = SelectSelector(
+                SelectSelectorConfig(options=["100", "75", "50"], translation_key="price_preheat_ratio")
+            )
+        elif key == "max_preheat_gap":
+            schema[marker] = SelectSelector(SelectSelectorConfig(options=["0", "15", "30", "45", "60"]))
         elif key in LIMITS:
             low, high = LIMITS[key]
             schema[marker] = vol.All(vol.Coerce(float), vol.Range(min=low, max=high))

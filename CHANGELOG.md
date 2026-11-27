@@ -1,5 +1,10 @@
 # Wijzigingen
 
+## 0.12.5 — 27 november 2026
+
+- Laat je de voorverwarmduur instellen op minstens de volledige pauzeduur, 75% of 50% daarvan.
+- Laat je kiezen hoeveel tijd tussen voorverwarmen en de prijspauze mag zitten, tot maximaal één uur.
+
 ## 0.12.4 — 27 november 2026
 
 - Herstelt het opslaan van automatische prijssturing nadat de gebruiker de bediening heeft overgedragen.

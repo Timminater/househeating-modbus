@@ -4,6 +4,7 @@ import asyncio
 import logging
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
+from functools import partial
 from math import floor, isfinite
 from time import time
 
@@ -14,8 +15,8 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .price_learning import RETENTION, PriceEnergyLearning
-from .price_options import is_zonneplan_tariff
-from .price_plan import PricePlan, Tariff, choose_plan, read_tariffs
+from .price_options import DEFAULTS, is_zonneplan_tariff
+from .price_plan import PricePlan, Tariff, allows_preheat, choose_plan, read_tariffs
 
 _LOGGER = logging.getLogger(__name__)
 HEATING_MODES = (1, 3)
@@ -35,6 +36,8 @@ class PriceManager:
         self.coordinator = coordinator
         self.config = coordinator.entry.options["price_control"]
         self.automatic = self.config["mode"] == "automatic"
+        self.preheat_ratio = int(self.config.get("preheat_ratio", DEFAULTS["preheat_ratio"]))
+        self.max_preheat_gap = int(self.config.get("max_preheat_gap", DEFAULTS["max_preheat_gap"])) * 60
         self.store = Store(hass, 1, f"househeating.price_control.{coordinator.entry.entry_id}")
         self.saved = {}
         self.plan = None
@@ -61,7 +64,11 @@ class PriceManager:
             if spec := self.saved.get("plan"):
                 restored = self.restore_plan(spec)
                 if now < restored.pause.end:
-                    self.plan = restored
+                    if self.accepts_plan(restored):
+                        self.plan = restored
+                    else:
+                        self.saved["plan"] = None
+                        await self.save()
                 elif restored.defer and now < restored.charge.end:
                     self.recovery_plan = restored
             if spec := self.saved.get("recovery_plan"):
@@ -80,6 +87,11 @@ class PriceManager:
                 await self.save()
         except (HomeAssistantError, TypeError, ValueError, KeyError):
             self.saved = {"blocked": True}
+
+    def accepts_plan(self, plan):
+        if plan.defer:
+            return self.config.get("allow_defer", False)
+        return allows_preheat(plan.charge, plan.pause, self.preheat_ratio, self.max_preheat_gap)
 
     @staticmethod
     def restore_plan(spec):
@@ -571,7 +583,7 @@ class PriceManager:
             and (not self.plan or now < min(self.plan.charge.start, self.plan.pause.start))
         ):
             self.plan = await self.hass.async_add_executor_job(
-                choose_plan,
+                partial(choose_plan, preheat_ratio=self.preheat_ratio, max_preheat_gap=self.max_preheat_gap),
                 rows,
                 now,
                 int(float(self.config["max_hours"]) * 3600),
